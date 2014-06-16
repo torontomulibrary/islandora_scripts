@@ -1,0 +1,198 @@
+#!/usr/bin/env drush
+
+#<?php
+
+# include all php files necessary for Tuque
+foreach ( glob("/var/www/drupal/htdocs/sites/all/libraries/tuque/*.php") as $filename) {
+	require_once($filename);
+}
+
+if (file_exists('/root/MODS_record.xml')) {
+    $modsRecord = simplexml_load_file('/root/jpmodsrecord.xml');
+    
+    //print_r($modsRecord);
+    
+}
+else {
+    return;
+}
+// print_r($result);
+
+
+$domdoc = new DOMDocument();
+$domdoc->loadXML($modsRecord->asXML());
+$xpath = new DOMXPath($domdoc);
+$xpath->registerNameSpace('mods', 'http://www.loc.gov/mods/v3');
+
+$xml_out = $domdoc->saveXML($domdoc->documentElement);
+echo $xml_out . "\n\n";
+
+// loop through all <name type="personal"> entries looking for authors
+foreach ($xpath->query('//mods:name[@type="personal"]') as $node) {
+    
+    // get original values
+    $originalGivenName = trim($xpath->query('mods:namePart[@type="given"]', $node)->item(0)->nodeValue);
+    $originalFamilyName = trim($xpath->query('mods:namePart[@type="family"]', $node)->item(0)->nodeValue);
+    
+    // swap values
+    $xpath->query('mods:namePart[@type="given"]', $node)->item(0)->nodeValue = $originalFamilyName;
+    $xpath->query('mods:namePart[@type="family"]', $node)->item(0)->nodeValue = $originalGivenName;
+    
+}
+// foreach ($xpath->query('//mods:name[@type="personal"]') as $node) {
+    
+//     foreach($other_nodes as $fooNode) {
+//         echo $fooNode->nodeValue;
+//     }
+    
+//     foreach ($node->childNodes as $nodeChild) {
+        
+//         if ((string)$nodeChild->localName == 'namePart') {
+            
+//             $aNamePart = $nodeChild->attributes->item(0)->nodeValue;
+//             if ($aNamePart == 'given') {
+//                 $nodeChild->attributes->item(0)->nodeValue == 'family';
+//                 //$givenNameOriginal = $nodeChild->attributes->item(0)->nodeValue;
+//             }
+//             else if ($aNamePart == 'family') {
+//                 $nodeChild->attributes->item(0)->nodeValue == 'given';
+//                 //$familyNameOriginal = $nodeChild->attributes->item(0)->nodeValue;
+//             }
+//         }
+        
+        
+//         if ($nodeChild->localName == 'namePart') {
+//             foreach($nodeChild->attributes as $attr) {
+//                 echo $attr->nodeName; // type
+//                 echo $attr->nodeValue; // given/family
+//                 if ($attr->nodeName == 'type' && $attr->nodeValue=='given') {
+//                     //$attr->nodeValue = !FamilyName!;
+//                     echo "found given name\n";
+//                     $originalGivenName = $attr->nodeValue;
+//                 }
+//                 else if ($attr->nodeName == 'type' && $attr->nodeValue=='family') {
+//                     //$attr->nodeValue = !givenName!;
+//                     echo "found family name\n";
+//                     $originalFamilyName = $attr->nodeValue;
+//                 }
+//             }
+//         }
+        //echo (string)$nodePart->localName;
+//     }
+// }
+
+
+// foreach($xpath->query('//fakeprefix:namePart[@type="given"]') as $rowNode) {
+//     echo $rowNode->nodeValue . "\n";
+// }
+// $givenName = $xpath->query('//mods:namePart[@type="given"]')->item(0)->nodeValue;
+// $familyName = $xpath->query('//mods:namePart[@type="family"]')->item(0)->nodeValue;
+// echo "\nValues from XML:\n";
+// echo "Given name: $givenName\n";
+// echo "Family name: $familyName\n";
+// echo "\n";
+
+// // switch the values of given name and family name
+// $xpath->query('//mods:namePart[@type="given"]')->item(0)->nodeValue = $familyName;
+// $xpath->query('//mods:namePart[@type="family"]')->item(0)->nodeValue = $givenName;
+
+
+// echo "\n\n" . $domdoc->saveXML($domdoc->documentElement);
+
+
+
+// $nodeList = $domdoc->getElementsByTagName('namePart');
+
+// foreach ($domdoc->getElementsByTagName('namePart') as $entry) 
+// {
+//     $entryType = $entry->getAttribute('type');
+    
+//     print $entry->nodeValue . " " . $entry->getAttribute('type') . "\n";
+    
+// }
+
+echo "\n\n" . $domdoc->saveXML($domdoc->documentElement) . "\n\n";
+
+return;
+
+
+
+
+$url = 'localhost:8080/fedora';
+$username = 'fedoraAdmin';
+$password = 'fedoraAdmin';
+
+# set up connection and repository variables
+$connection = new RepositoryConnection($url, $username, $password);
+$api = new FedoraApi($connection);
+$repository = new FedoraRepository($api, new SimpleCache());
+
+
+# what is the pid you want?
+$pid = 'islandora:3';
+
+# what to change the name to?
+$givenName = "Mickey";
+$familyName = "Mouse";
+$wholeName = $givenName . ' ' . $familyName;
+
+# try to fetch PID from repo
+try {
+	$object = $repository->getObject($pid);
+}
+catch (Exception $e) {
+	drush_print('****************ERROR***************');
+	exit;
+}
+
+# grab the data streams
+$dublinCoreDS = $object['DC'];
+$modsDS = $object['MODS'];
+
+// drush_print('******Dublin Core********');
+// drush_print(@$dublinCoreDS->getContent());
+// drush_print();
+
+# parse the datastreams into simplexml objects
+$modsXML = simplexml_load_string(@$modsDS->getContent());
+$dcXML = simplexml_load_string(@$dublinCoreDS->getContent());
+
+//print_r($dcXML->getDocNamespaces());
+
+// foreach ($dcXML->children("dc", TRUE) as $entry)
+// {
+// 	if ($entry->contributor)
+// 	{
+// 		$entry->contributor = 'Mickey Mouse';	
+// 	} 
+// 	//drush_print($entry);
+// }
+
+# change the MODS record
+$swapVariable = $mods->name['personal']->namePart['given'];
+$mods->name['personal']->namePart['given'] = $mods->name['personal']->namePart['family'];
+$mods->name['personal']->namePart['given'] = $swapVariable;
+
+# change the contributor in the Dublin Core datastream
+//$dcXML->children("dc", TRUE)->contributor[0] = $wholeName . ' (Author)';
+
+// drush_print();
+// drush_print('******EDITED Dublin Core********');
+// drush_print($dcXML->asXML());
+// drush_print();
+
+# set content of datastreams to newly edited content
+$modsDS->setContentFromString($mods);
+//$dublinCoreDS->setContentFromString($dcXML->asXML());
+
+# ingest datastream into repo
+$object->ingestDatastream($modsDS);
+//$object->ingestDatastream($dublinCoreDS);
+
+
+// $dd = new DOMDocument;
+// $dd->loadXML($dcXML->asXML());
+
+// foreach ($dd->getElementsByTagNameNS('http://purl.org/dc/elements/1.1/', '*') as $element) {
+//   echo $element->localName . ', ' . $element->nodeValue . "\n";
+// }
