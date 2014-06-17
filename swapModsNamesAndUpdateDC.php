@@ -34,9 +34,8 @@ drush_print("\n*****Query complete*****\n");
 $totalNumObjects = count($allPDFObjects);
 drush_print("There are $totalNumObjects objects to be processed");
 
-drush_print("\n******Beginning main loop*****\n");
+drush_print("\n******Beginning main processing loop*****\n");
 for ($counter = 0; $counter < $totalNumObjects; $counter++) {
-// foreach($allPDFObjects as $theObject) {
     
     $theObject = $allPDFObjects[$counter];
     $realCount = $counter + 1;
@@ -62,8 +61,6 @@ for ($counter = 0; $counter < $totalNumObjects; $counter++) {
     # grab the MODS data stream
     $modsDS = $object['MODS'];
     
-    //echo $modsDS->content;
-    
     /****************MODS RECORD**********************/
     //drush_print("Editing MODS record");
     $modsDOMDoc = new DOMDocument();
@@ -77,8 +74,6 @@ for ($counter = 0; $counter < $totalNumObjects; $counter++) {
         // get original values
         $originalGivenName = trim($modsXPath->query('mods:namePart[@type="given"]', $node)->item(0)->nodeValue);
         $originalFamilyName = trim($modsXPath->query('mods:namePart[@type="family"]', $node)->item(0)->nodeValue);
-    
-        //echo "\n\n" . $originalFamilyName . $originalGivenName;
     
         // swap values
         $modsXPath->query('mods:namePart[@type="given"]', $node)->item(0)->nodeValue = $originalFamilyName;
@@ -101,7 +96,6 @@ for ($counter = 0; $counter < $totalNumObjects; $counter++) {
     // update the DC based on the MODS record
     $document = new DOMDocument();
     $document->loadXML($modsDS->content);
-    
     $transform = 'mods_to_dc.xsl';
     
     // the magic call
@@ -111,5 +105,6 @@ for ($counter = 0; $counter < $totalNumObjects; $counter++) {
     /*************DUBLIN CORE COMPLETE*****************/
     
 }
+drush_print("Main processing loop complete");
 
-echo "\nAll operations complete\n";
+echo "\n\nAll operations complete\n";
