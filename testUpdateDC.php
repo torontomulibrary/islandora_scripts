@@ -7,14 +7,14 @@ foreach ( glob("/var/www/drupal/htdocs/sites/all/libraries/tuque/*.php") as $fil
 	require_once($filename);
 }
 
-$url = 'localhost:8080/fedora';
-$username = 'fedoraAdmin';
-$password = 'fedoraAdmin';
+// $url = 'localhost:8080/fedora';
+// $username = 'fedoraAdmin';
+// $password = 'fedoraAdmin';
 
-# set up connection and repository variables
-$connection = new RepositoryConnection($url, $username, $password);
-$api = new FedoraApi($connection);
-$repository = new FedoraRepository($api, new SimpleCache());
+// # set up connection and repository variables
+// $connection = new RepositoryConnection($url, $username, $password);
+// $api = new FedoraApi($connection);
+// $repository = new FedoraRepository($api, new SimpleCache());
 
 
 # what is the pid you want?

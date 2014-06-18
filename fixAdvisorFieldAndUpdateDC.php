@@ -70,6 +70,7 @@ for ($counter = 0; $counter < $totalNumObjects; $counter++) {
     $modsXPath = new DOMXPath($modsDOMDoc);
     $modsXPath->registerNameSpace('mods', 'http://www.loc.gov/mods/v3');
     
+    // flag to indicate if datastream reingest and DC regen is needed
     $updateThisRecord = FALSE;
     
     // loop through all <name type="personal"> entries looking for authors
@@ -79,10 +80,13 @@ for ($counter = 0; $counter < $totalNumObjects; $counter++) {
             $roleNode = $modsXPath->query('mods:role', $node)->item(0);
             $namePartNode = $modsXPath->query('mods:namePart', $node)->item(0);
             
-            $fullname = $modsXPath->query('mods:namePart', $node)->item(0)->nodeValue . "\n";
+            // grab full name as single string
+            $fullname = $modsXPath->query('mods:namePart', $node)->item(0)->nodeValue;
             
+            // break apart pieces
             $fullNameArray = explode(' ', $fullname);
             
+            // build given name 
             $givenName = '';
             for ($i = 0; $i < count($fullNameArray)-1; $i++) {
                 $givenName .= trim($fullNameArray[$i]) . " ";
@@ -94,18 +98,23 @@ for ($counter = 0; $counter < $totalNumObjects; $counter++) {
 //             echo "Thesis advisor is ";
 //             echo "$givenName $familyName\n";
             
+            // construct new node for given name
             $newNodeGivenName = $modsDOMDoc->createElement('namePart', $givenName);
             $newNodeGivenName->setAttribute('type', 'given');
             
+            // construct new node for family name
             $newNodeFamilyName = $modsDOMDoc->createElement('namePart', $familyName);
             $newNodeFamilyName->setAttribute('type', 'family');
             
+            // insert new nodes into the DOM document
             $node->insertBefore($newNodeGivenName, $roleNode);
             $node->insertBefore($newNodeFamilyName, $roleNode);
             
+            // remove the single name part node
             $mods = $modsDOMDoc->documentElement;
             $namePartNode->parentNode->removeChild($namePartNode);
             
+            // set flag to re-ingest the datastream and regen the DC record
             $updateThisRecord = TRUE;
         }
     

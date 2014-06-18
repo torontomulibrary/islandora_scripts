@@ -7,18 +7,43 @@ foreach ( glob("/var/www/drupal/htdocs/sites/all/libraries/tuque/*.php") as $fil
 	require_once($filename);
 }
 
-if (file_exists('/root/MODS_record.xml')) {
-    $modsRecord = simplexml_load_file('/root/creativeBoneInBody.xml');
+// if (file_exists('/root/MODS_record.xml')) {
+//     $modsRecord = simplexml_load_file('/root/creativeBoneInBody.xml');
     
     //print_r($modsRecord);
     
-}
-else {
-    drush_print("***####  Could not open file for reading ####***");
-    return;
-}
+// }
+// else {
+//     drush_print("***####  Could not open file for reading ####***");
+//     return;
+// }
 // print_r($result);
 
+# repository connection parameters
+$url = 'localhost:8080/fedora';
+$username = 'fedoraAdmin';
+$password = 'fedoraAdmin';
+
+# set up connection and repository variables
+$connection = new RepositoryConnection($url, $username, $password);
+$api = new FedoraApi($connection);
+$repository = new FedoraRepository($api, new SimpleCache());
+
+
+$pid = "islandora:1";
+
+try {
+    //drush_print("Attempting to access $objectPID from repository");
+    $object = $repository->getObject($pid);
+}
+catch (Exception $e) {
+    drush_print("\n\n**********#######  ERROR  #######*********");
+    drush_print("***Could not get object $pid from repo***\n\n");
+    continue;
+}
+
+$modsDatastream = islandora_datastream_load('MODS', $object);
+$modsxml = $modsDatastream->content;
 
 $domdoc = new DOMDocument();
 $domdoc->preserveWhiteSpace = false;
@@ -152,7 +177,9 @@ foreach ($xpath->query('//mods:name[@type="personal"]') as $node) {
     
 // }
 
-echo "\n\n" . $domdoc->saveXML($domdoc->documentElement) . "\n\n";
+$domdoc->saveXML($domdoc->documentElement);
+
+$modsDatastream->setContentFromString($domdoc);
 
 return;
 
