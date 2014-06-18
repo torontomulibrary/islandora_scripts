@@ -34,6 +34,9 @@ drush_print("\n*****Query complete*****\n");
 $totalNumObjects = count($allPDFObjects);
 drush_print("There are $totalNumObjects objects to be processed");
 
+// establish a counter for how many objects we edit
+$objectsChanged = 0;
+
 drush_print("\n******Beginning main processing loop*****\n");
 for ($counter = 0; $counter < $totalNumObjects; $counter++) {
     
@@ -144,11 +147,14 @@ for ($counter = 0; $counter < $totalNumObjects; $counter++) {
         //drush_print("Dublin core regenerated");
         /*************DUBLIN CORE COMPLETE*****************/
         
+        // keep track of how many objects we edited
+        $objectsChanged++;
+        
     }
     else {
         //drush_print("No update necessary");
     }
 }
 drush_print("Main processing loop complete");
-
+drush_print("$objectsChanged objects were updated");
 echo "\n\nAll operations complete\n";
