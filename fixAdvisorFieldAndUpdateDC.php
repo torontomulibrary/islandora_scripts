@@ -79,7 +79,7 @@ for ($counter = 0; $counter < $totalNumObjects; $counter++) {
     // loop through all <name type="personal"> entries looking for authors
     foreach ($modsXPath->query('//mods:name[@type="personal"]') as $node) {
     
-        if (trim($modsXPath->query('mods:role', $node)->item(0)->nodeValue) == "Thesis advisor") {
+        if (strcasecmp(trim($modsXPath->query('mods:role', $node)->item(0)->nodeValue), "Thesis advisor") == 0) {
             $roleNode = $modsXPath->query('mods:role', $node)->item(0);
             $namePartNode = $modsXPath->query('mods:namePart', $node)->item(0);
             
