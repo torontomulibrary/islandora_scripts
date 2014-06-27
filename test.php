@@ -10,7 +10,7 @@ foreach ( glob("/var/www/drupal/htdocs/sites/all/libraries/tuque/*.php") as $fil
 // if (file_exists('/root/MODS_record.xml')) {
 //     $modsRecord = simplexml_load_file('/root/creativeBoneInBody.xml');
     
-    //print_r($modsRecord);
+//     print_r($modsRecord);
     
 // }
 // else {
@@ -30,7 +30,7 @@ $api = new FedoraApi($connection);
 $repository = new FedoraRepository($api, new SimpleCache());
 
 
-$pid = "islandora:1";
+$pid = "islandora:3";
 
 try {
     //drush_print("Attempting to access $objectPID from repository");
@@ -48,50 +48,70 @@ $modsxml = $modsDatastream->content;
 $domdoc = new DOMDocument();
 $domdoc->preserveWhiteSpace = false;
 $domdoc->formatOutput = true;
-$domdoc->loadXML($modsRecord->asXML());
+$domdoc->loadXML($modsDatastream->content);
 $xpath = new DOMXPath($domdoc);
 $xpath->registerNameSpace('mods', 'http://www.loc.gov/mods/v3');
 
 $xml_out = $domdoc->saveXML($domdoc->documentElement);
 echo $xml_out . "\n\n";
 
+$topicArray = array();
+$domElemsToRemove = array();
+
 // loop through all <name type="personal"> entries looking for authors
-foreach ($xpath->query('//mods:name[@type="personal"]') as $node) {
+foreach ($xpath->query('//mods:subject') as $node) {
     
-    //echo $node->nodeValue;
-    
-    if (trim($xpath->query('mods:role', $node)->item(0)->nodeValue) == "Thesis advisor") {
-        $roleNode = $xpath->query('mods:role', $node)->item(0);
-        $namePartNode = $xpath->query('mods:namePart', $node)->item(0);
+    foreach($xpath->query('mods:topic', $node) as $topicNode) {
+        print "$topicNode->nodeValue\n";
+        $topicArray[]  = $topicNode->nodeValue;
         
-        $fullname = $xpath->query('mods:namePart', $node)->item(0)->nodeValue . "\n";
+        $newSubjectNode = $domdoc->createElement('subject');
+        $newTopicNode = $domdoc->createElement('topic', $topicNode->nodeValue);
         
-        $fullNameArray = explode(' ', $fullname);
-        
-        $givenName = '';
-        for ($i=0;$i < count($fullNameArray)-1;$i++) {
-            $givenName .= trim($fullNameArray[$i]) . " ";
-        }
-        
-        $givenName = trim($givenName);        
-        $familyName = trim($fullNameArray[count($fullNameArray)-1]);
-        
-        echo "Thesis advisor is ";
-        echo "$givenName $familyName\n";
-        
-        $newNodeGivenName = $domdoc->createElement('namePart', $givenName);
-        $newNodeGivenName->setAttribute('type', 'given');
-        
-        $newNodeFamilyName = $domdoc->createElement('namePart', $familyName);
-        $newNodeFamilyName->setAttribute('type', 'family');
-        
-        $node->insertBefore($newNodeGivenName, $roleNode);
-        $node->insertBefore($newNodeFamilyName, $roleNode);
-        
-        $mods = $domdoc->documentElement;
-        $namePartNode->parentNode->removeChild($namePartNode);
-        
+        $newNode = $node->parentNode->insertBefore($newSubjectNode, $node);
+        $newNode->appendChild($newTopicNode);
     }
+    
+    $domElemsToRemove[] = $node;
+}
+
+foreach( $domElemsToRemove as $toBeRemoved) {
+    $toBeRemoved->parentNode->removeChild($toBeRemoved);
+}
+
+
+//     if (trim($xpath->query('mods:role', $node)->item(0)->nodeValue) == "Thesis advisor") {
+//         $roleNode = $xpath->query('mods:role', $node)->item(0);
+//         $namePartNode = $xpath->query('mods:namePart', $node)->item(0);
+        
+//         $fullname = $xpath->query('mods:namePart', $node)->item(0)->nodeValue . "\n";
+        
+//         $fullNameArray = explode(' ', $fullname);
+        
+//         $givenName = '';
+//         for ($i=0;$i < count($fullNameArray)-1;$i++) {
+//             $givenName .= trim($fullNameArray[$i]) . " ";
+//         }
+        
+//         $givenName = trim($givenName);        
+//         $familyName = trim($fullNameArray[count($fullNameArray)-1]);
+        
+//         echo "Thesis advisor is ";
+//         echo "$givenName $familyName\n";
+        
+//         $newNodeGivenName = $domdoc->createElement('namePart', $givenName);
+//         $newNodeGivenName->setAttribute('type', 'given');
+        
+//         $newNodeFamilyName = $domdoc->createElement('namePart', $familyName);
+//         $newNodeFamilyName->setAttribute('type', 'family');
+        
+//         $node->insertBefore($newNodeGivenName, $roleNode);
+//         $node->insertBefore($newNodeFamilyName, $roleNode);
+        
+//         $mods = $domdoc->documentElement;
+//         $namePartNode->parentNode->removeChild($namePartNode);
+        
+//     }
     
     
     // get original values
@@ -102,7 +122,7 @@ foreach ($xpath->query('//mods:name[@type="personal"]') as $node) {
 //     $xpath->query('mods:namePart[@type="given"]', $node)->item(0)->nodeValue = $originalFamilyName;
 //     $xpath->query('mods:namePart[@type="family"]', $node)->item(0)->nodeValue = $originalGivenName;
     
-}
+// }
 
 
 // foreach ($xpath->query('//mods:name[@type="personal"]') as $node) {
@@ -177,9 +197,10 @@ foreach ($xpath->query('//mods:name[@type="personal"]') as $node) {
     
 // }
 
-$domdoc->saveXML($domdoc->documentElement);
+print $domdoc->saveXML($domdoc->documentElement);
 
-$modsDatastream->setContentFromString($domdoc);
+
+// $modsDatastream->setContentFromString($domdoc);
 
 return;
 
