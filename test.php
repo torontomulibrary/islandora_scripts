@@ -58,9 +58,10 @@ echo $xml_out . "\n\n";
 $topicArray = array();
 $domElemsToRemove = array();
 
-// loop through all <name type="personal"> entries looking for authors
+// loop through all <subject> nodess
 foreach ($xpath->query('//mods:subject') as $node) {
     
+    // find all the <topic> nodes which are children of each <subject> node
     foreach($xpath->query('mods:topic', $node) as $topicNode) {
         print "$topicNode->nodeValue\n";
         $topicArray[]  = $topicNode->nodeValue;
@@ -70,9 +71,11 @@ foreach ($xpath->query('//mods:subject') as $node) {
         
         $newNode = $node->parentNode->insertBefore($newSubjectNode, $node);
         $newNode->appendChild($newTopicNode);
+        
+        $domElemsToRemove[] = $node;
     }
     
-    $domElemsToRemove[] = $node;
+    
 }
 
 foreach( $domElemsToRemove as $toBeRemoved) {
