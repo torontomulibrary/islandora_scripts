@@ -2,6 +2,28 @@
 
 #<?php
 
+/**
+ * This script is intended to force the regeneration of FITS
+ * metadata for all items in the given collection
+ * 
+ * Usage: pass the name of the collection to the script as the first argument
+ * 
+ * Example: drush php-script regentFITSdata.php collection_name
+ * 
+ * @author Paul Church 
+ * @date June 2014
+ */
+
+# The collection name is required as an argument for the script execution
+# grab the first user supplied parameter as the name of the collection
+$collection = drush_shift();
+
+if (!$collection) {
+    drush_print("***Error: please provide the name of the collection as the first argument");
+    drush_print("Example: drush php-script regenFITSdata.php collection_name_here");
+    return;
+}
+
 # include all php files necessary for Tuque
 foreach ( glob("/var/www/drupal/htdocs/sites/all/libraries/tuque/*.php") as $filename) {
 	require_once($filename);
@@ -25,22 +47,29 @@ $sparqlQuery = "SELECT ?s
                 FROM <#ri>
                 WHERE {
                     ?s <info:fedora/fedora-system:def/relations-external#isMemberOfCollection> 
-                    <info:fedora/islandora:sp_pdf_collection> .
+                    <info:fedora/islandora:$collection> .
                 }";
 
 # run query
-drush_print("\n*****Querying repository for all PDF objects...");
+drush_print("\nQuerying repository for all PDF objects...");
 $allPDFObjects = $repository->ri->sparqlQuery($sparqlQuery);
-drush_print("\n*****Query complete*****\n");
+drush_print("Query complete\n");
 
-// main loop for ALL PDF OBJECTS in the collection
+// check number of objects in the collection to make sure we have some
 $totalNumObjects = count($allPDFObjects);
-drush_print("There are $totalNumObjects objects to be processed");
+if ($totalNumObjects <= 0) {
+    drush_print("***Error: no objects found in the given collection. Check the collection name.");
+    drush_print("***No processing was completed. Exiting.");
+    return;
+}
+else {
+    drush_print("There are $totalNumObjects objects to be processed");
+}
 
 // establish a counter for how many objects we edit
 $objectsChanged = 0;
 
-drush_print("\n******Beginning main processing loop*****\n");
+drush_print("\nBeginning main processing loop\n");
 for ($counter = 0; $counter < $totalNumObjects; $counter++) {
     
     // grab the next object from the result set
