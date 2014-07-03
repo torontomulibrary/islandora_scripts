@@ -14,13 +14,12 @@
  * @date June 2014
  */
 
-# The collection name is required as an argument for the script execution
 # grab the first user supplied parameter as the name of the collection
 $collection = drush_shift();
 
 if (!$collection) {
     drush_print("***Error: please provide the name of the collection as the first argument");
-    drush_print("Example: drush php-script regenFITSdata.php collection_name_here");
+    drush_print("Example: drush php-script regenFITSdata.php islandora:collection_name_here");
     return;
 }
 
@@ -33,7 +32,7 @@ foreach ( glob("/var/www/drupal/htdocs/sites/all/libraries/tuque/*.php") as $fil
 require_once('/var/www/drupal/htdocs/sites/all/modules/islandora_fits/includes/derivatives.inc');
 
 # repository connection parameters
-$url = 'localhost:8080/fedora';
+$url      = 'localhost:8080/fedora';
 $username = 'fedoraAdmin';
 $password = 'fedoraAdmin';
 
@@ -47,7 +46,7 @@ $sparqlQuery = "SELECT ?s
                 FROM <#ri>
                 WHERE {
                     ?s <info:fedora/fedora-system:def/relations-external#isMemberOfCollection> 
-                    <info:fedora/islandora:$collection> .
+                    <info:fedora/$collection> .
                 }";
 
 # run query
