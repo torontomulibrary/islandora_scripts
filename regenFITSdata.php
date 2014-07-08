@@ -94,8 +94,16 @@ for ($counter = 0; $counter < $totalNumObjects; $counter++) {
     // forces generation/regeneration of FITS data
     $forceGeneration = TRUE;
     
-    // the magic call
-    $result = islandora_fits_create_techmd($object, $forceGeneration);
+    // the magic call?
+    $result = islandora_fits_create_techmd($object, $forceGeneration, array(
+		'source_dsid' => 'OBJ', 
+		'destination_dsid' => 'TECHMD', 
+		'weight' => '0',
+		'function' => array(
+			'islandora_fits_create_techmd',
+		),
+		'file' => drupal_get_path('module', 'islandora_fits') . '/includes/derivatives.inc',
+	));
     
     // check to make sure the result was successful as reported by the function 
     if ($result['success'] == 1) {
