@@ -2,6 +2,37 @@
 
 #<?php
 
+/**
+ * This script is intended to transform MODS metadata for collection records,
+ * specifically changing a single name node "thesis advisor" to a multi-part name
+ * node and then regenerating the DC for the record.
+ * 
+ * Example:
+ * 
+ * Change this:
+ * <name type="personal">
+ *   <namePart>Jane Middlename Smith</namePart>
+ *   <role>Thesis advisor</role>
+ * </name>
+ * 
+ * Into this:
+ * <name type="personal">
+ *   <namePart type="given">Jane Middlename</namePart>
+ *   <namePart type="family">Smith</namePart>
+ *   <role>Thesis advisor</role>
+ * </name>
+ */
+
+# grab the first user supplied parameter as the name of the collection
+$collection = drush_shift();
+
+// show angry message if we didn't get a paramter passed to the script
+if (!$collection) {
+    drush_print("***Error: please provide the name of the collection as the first argument");
+    drush_print("Example: drush php-script regenFITSdata.php islandora:collection_name_here");
+    return;
+}
+
 # include all php files necessary for Tuque
 foreach ( glob("/var/www/drupal/htdocs/sites/all/libraries/tuque/*.php") as $filename) {
 	require_once($filename);
@@ -22,7 +53,7 @@ $sparqlQuery = "SELECT ?s
                 FROM <#ri>
                 WHERE {
                     ?s <info:fedora/fedora-system:def/relations-external#isMemberOfCollection> 
-                    <info:fedora/islandora:sp_pdf_collection> .
+                    <info:fedora/$collection> .
                 }";
 
 # run query
@@ -65,11 +96,12 @@ for ($counter = 0; $counter < $totalNumObjects; $counter++) {
     $modsDS = $object['MODS'];
     
     /****************MODS RECORD**********************/
-    //drush_print("Editing MODS record");
+
     $modsDOMDoc = new DOMDocument();
     $modsDOMDoc->preserveWhiteSpace = false;
     $modsDOMDoc->formatOutput = true;
     $modsDOMDoc->loadXML($modsDS->content);
+    
     $modsXPath = new DOMXPath($modsDOMDoc);
     $modsXPath->registerNameSpace('mods', 'http://www.loc.gov/mods/v3');
     
@@ -84,7 +116,8 @@ for ($counter = 0; $counter < $totalNumObjects; $counter++) {
             $namePartNode = $modsXPath->query('mods:namePart', $node)->item(0);
             
             // grab full name as single string
-            $fullname = $modsXPath->query('mods:namePart', $node)->item(0)->nodeValue;
+//             $fullname = $modsXPath->query('mods:namePart', $node)->item(0)->nodeValue;
+            $fullname = $namePartNode->nodeValue;
             
             // break apart pieces
             $fullNameArray = explode(' ', $fullname);
@@ -136,6 +169,7 @@ for ($counter = 0; $counter < $totalNumObjects; $counter++) {
         
         /******************DUBLIN CORE ********************/
         //drush_print("Re-generating Dublin Core");
+        
         // update the DC based on the MODS record
         $document = new DOMDocument();
         $document->loadXML($modsDS->content);
@@ -145,6 +179,7 @@ for ($counter = 0; $counter < $totalNumObjects; $counter++) {
         xml_form_builder_update_dc_datastream($object, $transform, $document);
         
         //drush_print("Dublin core regenerated");
+        
         /*************DUBLIN CORE COMPLETE*****************/
         
         // keep track of how many objects we edited
