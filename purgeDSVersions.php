@@ -147,7 +147,16 @@ $collection = drush_shift();
 
 if (! $collection) {
     drush_print("***Error: please provide the name of the collection as the first argument");
-    drush_print("Example: drush php-script purgeDSVersions.php islandora:collection_name_here");
+    drush_print("Example: drush scr purgeDSVersions.php islandora:collection_name_here FULL_TEXT");
+    return;
+}
+
+// grab the second user supplied paramter as the name of the datastream we care about
+$dslabel = drush_shift();
+
+if (! $dslabel) {
+    drush_print("***ERROR: please provide the name of the datastream label as the second argument");
+    drush_print("Example: drush scr purgeDSVersions.php islandora:collection_name_here FULL_TEXT");
     return;
 }
 
@@ -167,27 +176,12 @@ $api = new FedoraApi($connection);
 $repository = new FedoraRepository($api, new SimpleCache());
 $api_m = $repository->api->m; // Fedora management API
 
-/*
-TESTING
-$foo['dsCreateDate'] = '2014-07-08T20:21:01.223Z';
-$fee['dsCreateDate'] = '2014-07-08T20:21:01.223Z';
-$fez['dsCreateDate'] = '2013-01-25T00:00:00.000Z';
-$bar['dsCreateDate'] = '2014-07-08T20:21:01.000Z';
-$baz['dsCreateDate'] = '2014-07-08T20:21:00.000Z';
-$bat['dsCreateDate'] = '2014-07-08T20:21:59.999Z';
 
-drush_print(createMicrosecondDT($foo));
-drush_print(createMicrosecondDT($fee, '+1'));
-drush_print(createMicrosecondDT($fez, '-1'));
-drush_print(createMicrosecondDT($bar, '-1'));
-drush_print(createMicrosecondDT($baz, '-1'));
-drush_print(createMicrosecondDT($bat, '+1'));
 
-return;
-*/
+/***************TESTING*****************/
+$pid = 'islandora:1';
+/***************************************/
 
-$pid = 'islandora:4';
-$dslabel = 'TN';
 
 
 $dshistory = $api_m->getDatastreamHistory($pid, $dslabel); //NB: ds's are returned in order from most to least recent
@@ -195,14 +189,14 @@ $oldestToNewestDS = array_reverse($dshistory);
 $startingDSNumber = count($oldestToNewestDS);
 drush_print("Datastream array before pruning");
 print_r($oldestToNewestDS);
-
+drush_print("************************************************");
 // print_r($dshistory);
 // print_r($dshistory[0]);
 // print_r($dshistory[count($dshistory)-1]);
 
-// return;
+return;
 
-$allTheSame = TRUE;
+// $allTheSame = TRUE;
 $oldestDS = $oldestToNewestDS[0];
 $mainCounter = count($oldestToNewestDS)-1;
 $spaceFreed = 0;
@@ -236,7 +230,6 @@ for ($i = 0; $i <= $mainCounter; $i++) {
                 continue;
             }
             else {
-                $allTheSame = FALSE;
                 
                 foreach($toBeRemoved as $ds) {
                     $spaceFreed += $ds['dsSize'];
@@ -258,31 +251,10 @@ for ($i = 0; $i <= $mainCounter; $i++) {
         }
     }
     else {
-        $allTheSame = FALSE;
+//         $allTheSame = FALSE;
         drush_print('OUTER: value of checksums for '.$currentDS['dsVersionID'].' and '.$nextDS['dsVersionID'].' are different, going to next DS');
         continue;
     }
-}
-
-/**
- * We will never get to this code anymore?
- */
-if ($allTheSame) {
-    // if we get here, the checksums are all the same as the oldest DS
-    for ($k = 0; $k <= count($oldestToNewestDS)-1; $k++) {
-        $spaceFreed += $oldestToNewestDS[$k]['dsSize']; 
-    }
-    
-    drush_print("MAIN: Checksums are all the same!");
-    drush_print("MAIN: Deleting all checksums except the oldest...");
-    $api_m->purgeDatastream($pid, $dslabel, array(
-    	'startDT' => createMicrosecondDT($oldestDS, "+1"),
-      'endDT' => NULL,
-      'logMessage' => '',
-    ));
-}
-else {
-    
 }
 
 print "\n";
@@ -291,7 +263,7 @@ drush_print("Datastream array after pruning");
 print_r($oldestToNewestDSEnd);
 $endingDSNumber = count($oldestToNewestDSEnd);
 drush_print("Number of datastreams before script: $startingDSNumber\nNumber of datastreams after script: $endingDSNumber");
-drush_print("Amount of space freed : " . formatBytes($spaceFreed, 3));
+drush_print("Amount of space freed : " . ($spaceFreed==0?0:formatBytes($spaceFreed, 3)));
 
 
 return;
