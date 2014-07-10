@@ -6,6 +6,9 @@
  * and grouped together in the versions list. It uses the checksum value of the oldest datastream
  * version and compares it to the next most recent.
  * 
+ * If an object datastream does not have a checksum it is NOT skipped and is checked against the
+ * next version's checksum. Two consecutive datastream versions without checksums are considered IDENTICAL.
+ * 
  * Example: if we list all versions of a datastream, starting from the oldest version and 'AAA' denotes a
  * datastream checksum value, we can represent the steps of this script from left to right
  *  
@@ -26,7 +29,7 @@
  * Example: drush php-script purgeDSVersions.php collection_name
  *
  * @author Paul Church
- *         @date July 2014
+ * @date July 2014
  */
 
 
@@ -122,6 +125,23 @@ function createMicrosecondDT($dsObject, $modify='')
     
 }
 
+/**
+ * Taken from stackoverflow: 
+ * https://stackoverflow.com/questions/2510434/format-bytes-to-kilobytes-megabytes-gigabytes
+ * 
+ * @param unknown $size
+ * @param number $precision
+ * @return string
+ */
+function formatBytes($size, $precision = 2)
+{
+    $base = log($size) / log(1024);
+    $suffixes = array('', 'kB', 'MB', 'GB', 'TB');
+
+    return round(pow(1024, $base - floor($base)), $precision) . $suffixes[floor($base)];
+}
+
+
 // grab the first user supplied parameter as the name of the collection
 $collection = drush_shift();
 
@@ -135,9 +155,6 @@ if (! $collection) {
 foreach (glob("/var/www/drupal/htdocs/sites/all/libraries/tuque/*.php") as $filename) {
     require_once ($filename);
 }
-
-// Include the file from islandora_fits module that regens the FITS data for us
-require_once ('/var/www/drupal/htdocs/sites/all/modules/islandora_fits/includes/derivatives.inc');
 
 // repository connection parameters
 $url = 'localhost:8080/fedora';
@@ -170,7 +187,7 @@ return;
 */
 
 $pid = 'islandora:4';
-$dslabel = 'TECHMD';
+$dslabel = 'TN';
 
 
 $dshistory = $api_m->getDatastreamHistory($pid, $dslabel); //NB: ds's are returned in order from most to least recent
@@ -188,6 +205,7 @@ print_r($oldestToNewestDS);
 $allTheSame = TRUE;
 $oldestDS = $oldestToNewestDS[0];
 $mainCounter = count($oldestToNewestDS)-1;
+$spaceFreed = 0;
 
 for ($i = 0; $i <= $mainCounter; $i++) {
 //     drush_print("OUTER: value of i is $i");
@@ -202,18 +220,28 @@ for ($i = 0; $i <= $mainCounter; $i++) {
     $currentChecksum = $currentDS['dsChecksum'];
     $nextChecksum    = $nextDS['dsChecksum'];
     
+    $toBeRemoved = array();
+    
     if ($currentChecksum === $nextChecksum) {
         drush_print("OUTER: Checksums are the same, continuing");
+        
+        $toBeRemoved[] = $nextDS;
         
         for ($innerCounter = $i+1; $innerCounter <= count($oldestToNewestDS)-1; $innerCounter++) {
             $innerDSChecksum = $oldestToNewestDS[$innerCounter]['dsChecksum'];
             $nextInnerDSChecksum = $oldestToNewestDS[$innerCounter+1]['dsChecksum'];
             drush_print('   INNER: Comparing checksum of '.$oldestToNewestDS[$innerCounter]['dsVersionID'].' to checksum of '.$oldestToNewestDS[$innerCounter+1]['dsVersionID']);
             if ($innerDSChecksum === $nextInnerDSChecksum) {
+                $toBeRemoved[] = $oldestToNewestDS[$innerCounter+1];
                 continue;
             }
             else {
                 $allTheSame = FALSE;
+                
+                foreach($toBeRemoved as $ds) {
+                    $spaceFreed += $ds['dsSize'];
+                }
+                
                 // remove from $currentDS to $oldestToNewestDS[$innerCounter]
                 drush_print('   INNER: Checksums are different, removing from '.$currentDS['dsVersionID'].' to '.$oldestToNewestDS[$innerCounter]['dsVersionID']);
                 
@@ -236,8 +264,15 @@ for ($i = 0; $i <= $mainCounter; $i++) {
     }
 }
 
+/**
+ * We will never get to this code anymore?
+ */
 if ($allTheSame) {
     // if we get here, the checksums are all the same as the oldest DS
+    for ($k = 0; $k <= count($oldestToNewestDS)-1; $k++) {
+        $spaceFreed += $oldestToNewestDS[$k]['dsSize']; 
+    }
+    
     drush_print("MAIN: Checksums are all the same!");
     drush_print("MAIN: Deleting all checksums except the oldest...");
     $api_m->purgeDatastream($pid, $dslabel, array(
@@ -255,7 +290,8 @@ $oldestToNewestDSEnd = array_reverse($api_m->getDatastreamHistory($pid, $dslabel
 drush_print("Datastream array after pruning");
 print_r($oldestToNewestDSEnd);
 $endingDSNumber = count($oldestToNewestDSEnd);
-drush_print("Number of datastreams before script: $startingDSNumber\nNumber of datastreams after script: $endingDSNumber\n");
+drush_print("Number of datastreams before script: $startingDSNumber\nNumber of datastreams after script: $endingDSNumber");
+drush_print("Amount of space freed : " . formatBytes($spaceFreed, 3));
 
 
 return;
