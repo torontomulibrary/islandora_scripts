@@ -61,6 +61,7 @@ if ($totalNumObjects <= 0) {
 }
 
 $noChecksumDatastreams = array();
+$objZeroChecksumsMissing = array();
 $numberOfChecksums = 0;
 
 drush_print("\nBeginning main processing loop\n");
@@ -82,8 +83,16 @@ for ($counter = 0; $counter < $totalNumObjects; $counter ++) {
     foreach($allDSforObject as $objectDS) {
         $numberOfChecksums++;
         if (empty($objectDS['dsChecksum']) || $objectDS['dsChecksum'] == 'none') {
-            $noChecksumDatastreams[] = $objectDS;
-            drush_print("$objectPID is missing a checksum on the ".$objectDS['dsVersionID']." datastream");
+            if ($objectDS['dsVersionID'] == 'OBJ.0') {
+                // this is the original ingested objected, expected to be missing a checksum
+                $objZeroChecksumsMissing[] = $objectDS;
+            }
+            else {
+                // this is any other DS other than OBJ.0 so shouldn't be missing any checksums hopefully
+                $noChecksumDatastreams[] = $objectDS;
+                drush_print("$objectPID is missing a checksum on the ".$objectDS['dsVersionID']." datastream");
+            }
+            
         }
     }
     /*******************************************************************/
@@ -112,7 +121,10 @@ for ($counter = 0; $counter < $totalNumObjects; $counter ++) {
     
 }
 $ttlWithNoChecksum = count($noChecksumDatastreams);
+$objZeroNumberChecksumsMissing = count($objZeroChecksumsMissing);
 
 drush_print("Main processing loop complete\n");
+// drush_print("There are $ttlWithNoChecksum out of $numberOfChecksums objects with missing checksums on the $dslabel datastream");
+drush_print("There are $objZeroNumberChecksumsMissing OBJ.0 datastreams without a checksum");
 drush_print("There are $ttlWithNoChecksum out of $numberOfChecksums objects with missing checksums on the $dslabel datastream");
 echo "\n\nAll operations complete\n";
