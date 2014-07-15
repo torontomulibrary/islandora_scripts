@@ -227,14 +227,14 @@ for ($counter = 0; $counter < $totalNumObjects; $counter ++) {
     $dshistory = $api_m->getDatastreamHistory($objectPID, $dslabel); //NB: ds's are returned in order from most to least recent
     $oldestToNewestDS = array_reverse($dshistory);
     $startingDSNumber += count($oldestToNewestDS);
-    drush_print("Datastream array before pruning");
-    print_r($oldestToNewestDS);
-    drush_print("************************************************");
+//     drush_print("Datastream array before pruning");
+//     print_r($oldestToNewestDS);
+//     drush_print("************************************************");
     // print_r($dshistory);
     // print_r($dshistory[0]);
     // print_r($dshistory[count($dshistory)-1]);
     
-    return;
+//     return;
     
     $oldestDS = $oldestToNewestDS[0];
     $mainCounter = count($oldestToNewestDS)-1;
@@ -295,8 +295,8 @@ for ($counter = 0; $counter < $totalNumObjects; $counter ++) {
     }
     
     $oldestToNewestDSEnd = array_reverse($api_m->getDatastreamHistory($objectPID, $dslabel));
-    drush_print("Datastream array after pruning");
-    print_r($oldestToNewestDSEnd);
+//     drush_print("Datastream array after pruning");
+//     print_r($oldestToNewestDSEnd);
     $endingDSNumber += count($oldestToNewestDSEnd);
 }
 
