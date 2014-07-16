@@ -271,7 +271,7 @@ for ($counter = 0; $counter < $totalNumObjects; $counter ++) {
                 }
                 else {
                     
-					$totalDSSize = 0;
+	                $totalDSSize = 0;
                     foreach($toBeRemoved as $ds) {
                         $totalDSSize += $ds['dsSize'];
                     }
