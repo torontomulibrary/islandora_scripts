@@ -207,6 +207,8 @@ $spaceFreed = 0;
 $startingDSNumber = 0;
 $endingDSNumber = 0;
 
+$objectsWithProblems = array();
+
 drush_print("\nBeginning main processing loop\n");
 for ($counter = 0; $counter < $totalNumObjects; $counter ++) {
     // grab the next object from the result set
@@ -269,22 +271,32 @@ for ($counter = 0; $counter < $totalNumObjects; $counter ++) {
                 }
                 else {
                     
+					$totalDSSize = 0;
                     foreach($toBeRemoved as $ds) {
-                        $spaceFreed += $ds['dsSize'];
+                        $totalDSSize += $ds['dsSize'];
                     }
                     
                     // remove from $currentDS to $oldestToNewestDS[$innerCounter]
                     drush_print('   INNER: Checksums are different, removing from '.$currentDS['dsVersionID'].' to '.$oldestToNewestDS[$innerCounter]['dsVersionID']);
-                    
-                    $api_m->purgeDatastream($objectPID, $dslabel, array(
-                      'startDT' => createMicrosecondDT($currentDS, "+1"),
-                      'endDT' => createMicrosecondDT($oldestToNewestDS[$innerCounter]),
-                      'logMessage' => '',
-                    ));
-                    $mainCounter = count($api_m->getDatastreamHistory($objectPID, $dslabel));
-                    $oldestToNewestDS = array_reverse($api_m->getDatastreamHistory($objectPID, $dslabel));
-    //                 print_r($oldestToNewestDS);
-                    break;
+			        try{            
+                        $api_m->purgeDatastream($objectPID, $dslabel, array(
+                          'startDT' => createMicrosecondDT($currentDS, "+1"),
+                          'endDT' => createMicrosecondDT($oldestToNewestDS[$innerCounter]),
+                          'logMessage' => '',
+                        ));
+
+						$spaceFreed += $totalDSSize;
+
+						$mainCounter = count($api_m->getDatastreamHistory($objectPID, $dslabel));
+						$oldestToNewestDS = array_reverse($api_m->getDatastreamHistory($objectPID, $dslabel));
+		//                 print_r($oldestToNewestDS);
+						break;
+                    }
+                    catch (Exception $e) {
+                        drush_print("***ERROR: skipping deletion of datastreams***");
+                        $objectsWithProblems[] = $objectPID;
+						break;
+                    }
                 }
             }
         }
@@ -302,6 +314,13 @@ for ($counter = 0; $counter < $totalNumObjects; $counter ++) {
 
 print "\n";
 
+
+if (!empty($objectsWithProblems)) {
+    drush_print("The script encountered problems with the following objects");
+    foreach ($objectsWithProblems as $prob) {
+        drush_print($prob);
+    }
+}
 
 drush_print("Number of datastreams before script: $startingDSNumber\nNumber of datastreams after script: $endingDSNumber");
 drush_print("Amount of space freed : " . ($spaceFreed==0?0:formatBytes($spaceFreed, 3)));
