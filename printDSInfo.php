@@ -28,7 +28,7 @@ foreach (glob("/var/www/drupal/htdocs/sites/all/libraries/tuque/*.php") as $file
 // repository connection parameters
 $url = 'localhost:8080/fedora';
 $username = 'fedoraAdmin';
-$password = '***REMOVED***';
+$password = 'fedoraAdmin';
 
 // set up connection and repository variables
 $connection = new RepositoryConnection($url, $username, $password);
