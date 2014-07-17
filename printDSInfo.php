@@ -35,9 +35,16 @@ $connection = new RepositoryConnection($url, $username, $password);
 $api = new FedoraApi($connection);
 $repository = new FedoraRepository($api, new SimpleCache());
 $api_m = $repository->api->m;
+$api_a = $repository->api->a;
 
 $info = array_reverse($api_m->getDatastreamHistory($PID, $dslabel));
 print_r($info);
+
+$history = $api_a->getObjectHistory($PID);
+$profile = $api_a->getObjectProfile($PID, new DateTime());
+
+print_r($history);
+print_r($profile);
 
 drush_print("\nMain processing loop complete\n");
 
