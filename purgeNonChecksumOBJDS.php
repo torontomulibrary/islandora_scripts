@@ -254,7 +254,7 @@ for ($counter = 0; $counter < $totalNumObjects; $counter ++) {
         if (!empty($oldestToNewestDS[1]['dsChecksum'])) {
             
             $followsThePattern[] = $objectPID;
-            drush_print("$objectPID follows the pattern");
+            drush_print("$objectPID matches the pattern");
 
             try {
                 $oldestDSVersionContent = $api_a->getDatastreamDissemination($objectPID, $dslabel, $oldestDS['dsCreateDate'], NULL);
@@ -264,11 +264,15 @@ for ($counter = 0; $counter < $totalNumObjects; $counter ++) {
                 // hash of the most recent DS's content (stored) then we can delete the oldest 
                 // version of the DS as it is exactly the same as the most recent version
                 if ($oldestToNewestDS[1]['dsChecksum'] === $computedHash) {
-                    drush_print("Could delete the OBJ.0 DS here as the hashes are the same");
+                    drush_print("Deleting the OBJ.0 datastream as the hashes are the same");
+                    
+                    $spaceFreed += $oldestDS['dsSize'];	
+                    
+                    // delete the .0 datastream (oldest version)
                     $api_m->purgeDatastream($objectPID, $dslabel, array(
                         'startDT' => $oldestDS['dsCreateDate'],
                         'endDT' => $oldestDS['dsCreateDate'],
-                        'logMessage' => '',
+                        'logMessage' => "Deleting $objectPID $dslabel.0 datastream",
                     ));
                     $dsToDelete++;
                 }
@@ -285,11 +289,15 @@ for ($counter = 0; $counter < $totalNumObjects; $counter ++) {
 print "\n";
 
 $theCount = count($followsThePattern);
-drush_print("There are $theCount number of datastreams out of $totalNumObjects that follow the pattern");
-drush_print("We could delete $dsToDelete OBJ.0 datastreams");
+drush_print("There are $theCount number of datastreams out of $totalNumObjects that match the pattern");
+drush_print("We deleted $dsToDelete OBJ.0 datastreams");
+drush_print("We freed " . formatBytes($spaceFreed, 3) . " of space");
 if (!empty($skippedObjects)) {
 	drush_print("We skipped " . count($skippedObjects) . " objects due to issues");
+	foreach ($skippedObjects as $skip) {
+		drush_print("Skipped: $skip");
+	}
 }
 
 return;
-    
+
