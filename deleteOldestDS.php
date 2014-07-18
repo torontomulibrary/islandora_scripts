@@ -51,9 +51,10 @@ if (! $dslabel) {
     return;
 }
 
-// include all php files necessary for Tuque
-foreach (glob("/var/www/drupal/htdocs/sites/all/libraries/tuque/*.php") as $filename) {
-    require_once ($filename);
+# include all Tuque php files
+$tuquePath = libraries_get_path('tuque') . '/*.php';
+foreach ( glob($tuquePath) as $filename) {
+    require_once($filename);
 }
 
 // repository connection parameters
