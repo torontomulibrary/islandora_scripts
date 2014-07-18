@@ -175,6 +175,7 @@ $connection = new RepositoryConnection($url, $username, $password);
 $api = new FedoraApi($connection);
 $repository = new FedoraRepository($api, new SimpleCache());
 $api_m = $repository->api->m; // Fedora management API
+$api_a = $repository->api->a; // Fedora Access API
 
 // query to grab all pdf collection objects from the repository
 $sparqlQuery = "SELECT ?s
@@ -207,8 +208,11 @@ $spaceFreed = 0;
 $startingDSNumber = 0;
 $endingDSNumber = 0;
 
+$dsToDelete = 0;
+
 $objectsWithProblems = array();
 $followsThePattern = array();
+$skippedObjects = array();
 
 
 drush_print("\nBeginning main processing loop\n");
@@ -242,106 +246,50 @@ for ($counter = 0; $counter < $totalNumObjects; $counter ++) {
 
     $oldestDS = $oldestToNewestDS[0];
     $oldestDSChecksum = $oldestDS['dsChecksum'];
+    
+    // if the oldest version of this DS has no checksum...
     if ($oldestDSChecksum == 'none' || empty($oldestDSChecksum)) {
         
+        // if the second oldest version of this DS has a checksum...
         if (!empty($oldestToNewestDS[1]['dsChecksum'])) {
             
-            if (!$oldestDS[2]) {
-                
-                $followsThePattern[] = $objectPID;
-                drush_print("$objectPID follows the pattern");
+            $followsThePattern[] = $objectPID;
+            drush_print("$objectPID follows the pattern");
+
+            try {
+                $oldestDSVersionContent = $api_a->getDatastreamDissemination($objectPID, $dslabel, $oldestDS['dsCreateDate'], NULL);
+                $computedHash = hash('sha256', $oldestDSVersionContent);
+
+                // if the hash of the oldest version of the DS's content (computed) equals the
+                // hash of the most recent DS's content (stored) then we can delete the oldest 
+                // version of the DS as it is exactly the same as the most recent version
+                if ($oldestToNewestDS[1]['dsChecksum'] === $computedHash) {
+                    drush_print("Could delete the OBJ.0 DS here as the hashes are the same");
+                    $api_m->purgeDatastream($objectPID, $dslabel, array(
+                        'startDT' => $oldestDS['dsCreateDate'],
+                        'endDT' => $oldestDS['dsCreateDate'],
+                        'logMessage' => '',
+                    ));
+                    $dsToDelete++;
+                }
+            } catch (Exception $e) {
+                drush_print("Skipping object $objectPID");
+                $skippedObjects[] = $objectPID;
+                continue;
             }
         } 
     }
     
-    
-    
-    
-    /*
-    $mainCounter = count($oldestToNewestDS)-1;
-    
-    for ($i = 0; $i <= $mainCounter; $i++) {
-//         drush_print("OUTER: value of i is $i");
-        $currentDS = $oldestToNewestDS[$i];
-        $nextDS    = $oldestToNewestDS[$i+1];
-        if (!$currentDS || !$nextDS) {
-            drush_print("OUTER: Nothing to compare anymore, finishing up");
-            break;
-        }
-        drush_print('OUTER: Comparing checksum of '.$currentDS['dsVersionID'].' to checksum of '.$nextDS['dsVersionID']);
-        
-        $currentChecksum = $currentDS['dsChecksum'];
-        $nextChecksum    = $nextDS['dsChecksum'];
-        
-        $toBeRemoved = array();
-        
-        if ($currentChecksum === $nextChecksum) {
-            drush_print("OUTER: Checksums are the same, continuing");
-            
-            $toBeRemoved[] = $nextDS;
-            
-            for ($innerCounter = $i+1; $innerCounter <= count($oldestToNewestDS)-1; $innerCounter++) {
-                $innerDSChecksum = $oldestToNewestDS[$innerCounter]['dsChecksum'];
-                $nextInnerDSChecksum = $oldestToNewestDS[$innerCounter+1]['dsChecksum'];
-                drush_print('   INNER: Comparing checksum of '.$oldestToNewestDS[$innerCounter]['dsVersionID'].' to checksum of '.$oldestToNewestDS[$innerCounter+1]['dsVersionID']);
-                if ($innerDSChecksum === $nextInnerDSChecksum) {
-                    $toBeRemoved[] = $oldestToNewestDS[$innerCounter+1];
-                    continue;
-                }
-                else {
-                    
-                    // get space of DS'es to be removed
-                    $totalDSSize = 0;
-                    foreach($toBeRemoved as $ds) {
-                        $totalDSSize += $ds['dsSize'];
-                    }
-                    
-                    // remove from $currentDS to $oldestToNewestDS[$innerCounter]
-                    drush_print('   INNER: Checksums are different, removing from '.$currentDS['dsVersionID'].' to '.$oldestToNewestDS[$innerCounter]['dsVersionID']);
-                    
-                    try {
-                        $api_m->purgeDatastream($objectPID, $dslabel, array(
-                          'startDT' => createMicrosecondDT($currentDS, "+1"),
-                          'endDT' => createMicrosecondDT($oldestToNewestDS[$innerCounter]),
-                          'logMessage' => 'Deleting ' . $objectPID. ' ' . $dslabel,
-                        ));
-                        
-                        $spaceFreed += $totalDSSize;
-                        
-                        $mainCounter = count($api_m->getDatastreamHistory($objectPID, $dslabel));
-                        $oldestToNewestDS = array_reverse($api_m->getDatastreamHistory($objectPID, $dslabel));
-                        //                 print_r($oldestToNewestDS);
-                        break;
-                        
-                    } catch (Exception $e) {
-                        drush_print("***ERROR: datastream purge was not possible on this object");
-                        $objectsWithProblems[] = $objectPID;
-                        
-                    }
-                    
-                }
-            }
-        }
-        else {
-            drush_print('OUTER: value of checksums for '.$currentDS['dsVersionID'].' and '.$nextDS['dsVersionID'].' are different, going to next DS');
-            continue;
-        }
-    }
-    
-    $oldestToNewestDSEnd = array_reverse($api_m->getDatastreamHistory($objectPID, $dslabel));
-//     drush_print("Datastream array after pruning");
-//     print_r($oldestToNewestDSEnd);
-    $endingDSNumber += count($oldestToNewestDSEnd);
-    
-    */
 }
 
 print "\n";
 
-// drush_print("Number of datastreams before script: $startingDSNumber\nNumber of datastreams after script: $endingDSNumber");
-// drush_print("Amount of space freed : " . ($spaceFreed==0?0:formatBytes($spaceFreed, 3)));
 $theCount = count($followsThePattern);
 drush_print("There are $theCount number of datastreams out of $totalNumObjects that follow the pattern");
+drush_print("We could delete $dsToDelete OBJ.0 datastreams");
+if (!empty($skippedObjects)) {
+	drush_print("We skipped " . count($skippedObjects) . " objects due to issues");
+}
 
 return;
     
