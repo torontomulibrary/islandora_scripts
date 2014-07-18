@@ -1,6 +1,19 @@
 #!/usr/bin/env drush
 
 #<?php
+/**
+ * This script simply prints out the datastream information of a single object
+ * and single datastream label
+ * 
+ * @author Paul Church
+ * @date July 2014
+ * 
+ * 
+ * Usage: drush scr printDSInfo.php objectPID datastreamLabel
+ * 
+ * Example:  drush scr printDSInfo.php islandora:3 TECHMD
+ * 
+ */
 
 // grab the first user supplied parameter as the PID 
 $PID = drush_shift();
