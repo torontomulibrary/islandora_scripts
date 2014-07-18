@@ -2,52 +2,48 @@
 
 #<?php 
 
-drush_print("Hello World");
+# include all Tuque php files
+$tuquePath = libraries_get_path('tuque') . '/*.php';
+foreach ( glob($tuquePath) as $filename) {
+    require_once($filename);
+}
 
-drush_print();
+# repository connection parameters
+$url      = 'localhost:8080/fedora';
+$username = 'fedoraAdmin';
+$password = 'fedoraAdmin';
 
-require_once('/var/www/drupal/htdocs/sites/all/libraries/tuque/RepositoryConnection.php');
-require_once('/var/www/drupal/htdocs/sites/all/libraries/tuque/FedoraApi.php');
-
-module_load_include('inc', 'islandora', 'includes/tuque');
-module_load_include('inc', 'islandora', 'includes/tuque_wrapper');
-module_load_include('inc', 'islandora', 'includes/utilities');
-module_load_include('inc', 'islandora', 'includes/derivatives');
-module_load_include('inc', 'islandora', 'includes/regenerate_derivatives.form');
-module_load_include('inc', 'islandora', 'includes/add_datastream.form');
-module_load_include('inc', 'islandora', 'includes/datastream');
-module_load_include('inc', 'islandora', 'includes/metadata');
-module_load_include('inc', 'islandora', 'includes/solution_packs');
-module_load_include('inc', 'islandora', 'includes/object_properties.form');
-
-$connection = islandora_get_tuque_connection();
-$connection->connection->username = 'fedoraAdmin';
-$connection->connection->password = 'fedoraAdmin';
-
-$api = new FedoraApi($connection);
-$cache = new SimpleCache();
-$repository = new FedoraRepository($api, $cache);
+# set up connection and repository variables
+$connection = new RepositoryConnection($url, $username, $password);
+$api        = new FedoraApi($connection);
+$repository = new FedoraRepository($api, new SimpleCache());
 
 $pid = 'islandora:3';
 
-
-$object = islandora_object_load($pid);
-if ($object) {
-	$repository = $object->repository;
+try {
+    $object = $repository->getObject($pid);
 }
-else {
-	drush_print('****************Error****************');
+catch (Exception $e) {
+    drush_print("\n\n**********#######  ERROR  #######*********");
+    drush_print("***Could not get object $pid from repo***\n\n");
+    return;
 }
 
 $modsDatastream = islandora_datastream_load('MODS', $object);
-$modsxml = $modsDatastream->content;
+// equivalent
+$modsDatastream = $object['MODS'];
 
-drush_print('******OLD XML*******');
-drush_print();
+
+$modsxml = $modsDatastream->content;
+// equivalent
+$modsxml = $modsDatastream->getContent();
+
+
+drush_print("******OLD XML*******\n");
 drush_print($modsxml);
 drush_print('*****END OLD XML*******');
-drush_print();
 
+return;
 
 $mods = simplexml_load_string($modsxml);
 drush_print($mods->name->namePart);
@@ -55,29 +51,11 @@ $mods->name->namePart = "Test Name";
 
 
 $modsEdit = $mods->asXML();
-drush_print();
-drush_print('******NEW XML*******');
-drush_print();
+drush_print("\n\n******NEW XML*******\n");
 drush_print($modsEdit);
-drush_print('*****END NEW XML*******');
-drush_print();
+drush_print("*****END NEW XML*******\n");
 
 # ingest new datastream into the repo
 $modsDatastream->setContentFromString($modsEdit);
 $object->ingestDatastream($modsDatastream);
 
-
-$DC = $api->m->getDatastream($pid, 'DC');
-print $DC;
-
-//$newDC = new DublinCore($modsEdit);
-//$ds = $object->constructDatastream('DC');
-//$ds->content = $newDC->asXML();
-//$object->ingestDatastream($ds);
-
-$document = new DOMDocument();
-$document->loadXml($modsEdit);
-
-//drush_print(xml_form_builder_update_dc_datastream($object, $association['transform'], $document));
-
-//$xmlfd = new XMLFormDefinition(0);
