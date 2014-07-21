@@ -3,7 +3,7 @@
 #<?php
 
 /**
- * This script is intended to remove multiple versions of a datastream that are the same
+ * This script is intended to remove multiple versions of datastreams that are the same
  * and grouped together in the versions list.
  * It starts by using the checksum value of the oldest datastream
  * version and compares it to the next most recent.
