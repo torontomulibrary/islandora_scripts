@@ -22,8 +22,21 @@
  * <subject>
  *   <topic>Other Data</topic>
  * </subject>
+ * 
+ * This script also updates the DC record after the changes are made.
+ * 
+ * @author Paul Church
+ * @date July 2014
  */
 
+# grab the first user supplied parameter as the name of the collection
+$collection = drush_shift();
+
+if (!$collection) {
+    drush_print("***Error: please provide the name of the collection as the first argument");
+    drush_print("Example: drush php-script editMODSTopics.php islandora:collection_name_here");
+    return;
+}
 
 # include all php files necessary for Tuque
 foreach ( glob("/var/www/drupal/htdocs/sites/all/libraries/tuque/*.php") as $filename) {
@@ -45,7 +58,7 @@ $sparqlQuery = "SELECT ?s
                 FROM <#ri>
                 WHERE {
                     ?s <info:fedora/fedora-system:def/relations-external#isMemberOfCollection> 
-                    <info:fedora/islandora:sp_pdf_collection> .
+                    <info:fedora/$collection> .
                 }";
 
 # run query
@@ -53,13 +66,17 @@ drush_print("\n*****Querying repository for all PDF objects...");
 $allPDFObjects = $repository->ri->sparqlQuery($sparqlQuery);
 drush_print("\n*****Query complete*****\n");
 
-// main loop for ALL PDF OBJECTS in the collection
+// how many total objects are there in the collection?
 $totalNumObjects = count($allPDFObjects);
 drush_print("There are $totalNumObjects objects to be processed");
 
 // establish a counter for how many objects we edit
 $objectsChanged = 0;
 
+// keep track of how many troublesome objects we had to skip
+$skippedObjects = array();
+
+// main loop for ALL PDF OBJECTS in the collection
 drush_print("\n******Beginning main processing loop*****\n");
 for ($counter = 0; $counter < $totalNumObjects; $counter++) {
     
@@ -78,6 +95,7 @@ for ($counter = 0; $counter < $totalNumObjects; $counter++) {
     catch (Exception $e) {
         drush_print("\n\n**********#######  ERROR  #######*********");
         drush_print("***Could not get object $objectPID from repo***\n\n");
+        $skippedObjects[] = $objectPID;
         continue;
     }
     
@@ -85,7 +103,7 @@ for ($counter = 0; $counter < $totalNumObjects; $counter++) {
     $modsDS = $object['MODS'];
     
     /****************MODS RECORD**********************/
-    //drush_print("Editing MODS record");
+//     drush_print("Editing MODS record");
     $modsDOMDoc = new DOMDocument();
     $modsDOMDoc->preserveWhiteSpace = false;
     $modsDOMDoc->formatOutput = true;
@@ -136,12 +154,12 @@ for ($counter = 0; $counter < $totalNumObjects; $counter++) {
         # ingest edited datastream into the repository
         $object->ingestDatastream($modsDS);
         
-        //drush_print("MODS record updated for object pid: $objectPID\n");
+//         drush_print("MODS record updated for object pid: $objectPID\n");
         /*************MODS RECORD COMPLETE*****************/
         
         
         /******************DUBLIN CORE ********************/
-        //drush_print("Re-generating Dublin Core");
+//         drush_print("Re-generating Dublin Core");
         // update the DC based on the MODS record
         $document = new DOMDocument();
         $document->loadXML($modsDS->content);
@@ -150,7 +168,7 @@ for ($counter = 0; $counter < $totalNumObjects; $counter++) {
         // the magic call
         xml_form_builder_update_dc_datastream($object, $transform, $document);
         
-        //drush_print("Dublin core regenerated");
+//         drush_print("Dublin core regenerated");
         /*************DUBLIN CORE COMPLETE*****************/
         
         // keep track of how many objects we edited
@@ -160,4 +178,10 @@ for ($counter = 0; $counter < $totalNumObjects; $counter++) {
 }
 drush_print("Main processing loop complete");
 drush_print("$objectsChanged out of $totalNumObjects were updated");
+if (!empty($skippedObjects)) {
+    drush_print("The script had problems with the following PID's");
+    foreach ($skippedObjects as $skipped) {
+        drush_print($skipped);
+    }
+}
 echo "\n\nAll operations complete\n";
