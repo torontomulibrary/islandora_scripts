@@ -103,7 +103,7 @@ for ($counter = 0; $counter < $totalNumObjects; $counter++) {
     $modsDS = $object['MODS'];
     
     /****************MODS RECORD**********************/
-//     drush_print("Editing MODS record");
+    // drush_print("Editing MODS record");
     $modsDOMDoc = new DOMDocument();
     $modsDOMDoc->preserveWhiteSpace = false;
     $modsDOMDoc->formatOutput = true;
@@ -125,7 +125,7 @@ for ($counter = 0; $counter < $totalNumObjects; $counter++) {
         foreach ($modsXPath->query('mods:topic', $node) as $topicNode) {
             
             $newSubjectNode = $modsDOMDoc->createElement('subject');
-            $newTopicNode = $modsDOMDoc->createElement('topic', $topicNode->nodeValue);
+            $newTopicNode = $modsDOMDoc->createElement('topic', htmlspecialchars($topicNode->nodeValue));
             
             $newNode = $node->parentNode->insertBefore($newSubjectNode, $node);
             $newNode->appendChild($newTopicNode);
@@ -148,37 +148,54 @@ for ($counter = 0; $counter < $totalNumObjects; $counter++) {
     }
     
     if ($updateThisRecord) {
-        // write the new updated info back into the datastream
-        $modsDS->setContentFromString($modsDOMDoc->saveXML($modsDOMDoc->documentElement));
         
-        # ingest edited datastream into the repository
-        $object->ingestDatastream($modsDS);
-        
-//         drush_print("MODS record updated for object pid: $objectPID\n");
-        /*************MODS RECORD COMPLETE*****************/
-        
-        
-        /******************DUBLIN CORE ********************/
-//         drush_print("Re-generating Dublin Core");
-        // update the DC based on the MODS record
-        $document = new DOMDocument();
-        $document->loadXML($modsDS->content);
-        $transform = 'mods_to_dc.xsl';
-        
-        // the magic call
-        xml_form_builder_update_dc_datastream($object, $transform, $document);
-        
-//         drush_print("Dublin core regenerated");
-        /*************DUBLIN CORE COMPLETE*****************/
-        
-        // keep track of how many objects we edited
-        $objectsChanged++;
+        try {
+            // write the new updated info back into the datastream
+            $modsDS->setContentFromString($modsDOMDoc->saveXML($modsDOMDoc->documentElement));
+            
+            # ingest edited datastream into the repository
+            $object->ingestDatastream($modsDS);
+        }
+        catch (Exception $e) {
+            drush_print("\n\n**********#######  ERROR  #######*********");
+            drush_print("***Could not set $objectPID MODS datastream content or ingest into repo ****\n\n");
+            $skippedObjects[] = $objectPID;
+            continue;
+        }
+            
+            // drush_print("MODS record updated for object pid: $objectPID\n");
+            /*************MODS RECORD COMPLETE*****************/
+            
+        try {
+            /******************DUBLIN CORE ********************/
+            // drush_print("Re-generating Dublin Core");
+            // update the DC based on the MODS record
+            $document = new DOMDocument();
+            $document->loadXML($modsDS->content);
+            $transform = 'mods_to_dc.xsl';
+            
+            // the magic call
+            xml_form_builder_update_dc_datastream($object, $transform, $document);
+            
+            // drush_print("Dublin core regenerated");
+            /*************DUBLIN CORE COMPLETE*****************/
+            
+            // keep track of how many objects we edited
+            $objectsChanged++;
+        }
+        catch (Exception $e) {
+            drush_print("\n\n**********#######  ERROR  #######*********");
+            drush_print("***Could not update $objectPID DC record ****\n\n");
+            $skippedObjects[] = $objectPID;
+            continue;
+        }
         
     }
 }
 drush_print("Main processing loop complete");
 drush_print("$objectsChanged out of $totalNumObjects were updated");
 if (!empty($skippedObjects)) {
+    $skippedObjects = array_unique($skippedObjects);
     drush_print("The script had problems with the following PID's");
     foreach ($skippedObjects as $skipped) {
         drush_print($skipped);
