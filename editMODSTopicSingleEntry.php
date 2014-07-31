@@ -107,9 +107,10 @@ foreach ($modsXPath->query('//mods:subject') as $node) {
         
         if ($topicNode->nodeValue === $topicSearchString) {
             $topicNode->nodeValue = htmlspecialchars($topicReplaceString);
+            $updateThisRecord = TRUE;
         }
         
-        $updateThisRecord = TRUE;
+        
     }
 }
    
