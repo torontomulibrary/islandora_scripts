@@ -3,7 +3,7 @@
 #<?php
 
 /**
- * This script is intended to regenerate the TECHMD, TN, Preview and FULL_TEXT 
+ * This script is intended to (re)generate the TECHMD, TN, Preview and FULL_TEXT 
  * datastreams for all items in the given collection
  * 
  * Usage: pass the name of the collection to the script as the first argument
@@ -71,6 +71,9 @@ else {
 // establish a counter for how many objects we edit
 $objectsChanged = 0;
 
+// establish an array to keep track of any objects we skip
+$skippedObjects = array();
+
 drush_print("\nBeginning main processing loop\n");
 for ($counter = 0; $counter < $totalNumObjects; $counter++) {
     
@@ -83,7 +86,7 @@ for ($counter = 0; $counter < $totalNumObjects; $counter++) {
     
     // grab the PID value from the object array
     $objectPID = $theObject['s']['value'];
-    
+
     # try to fetch PID from repo
     try {
         $object = $repository->getObject($objectPID);
@@ -97,57 +100,74 @@ for ($counter = 0; $counter < $totalNumObjects; $counter++) {
     // forces generation/regeneration of FITS data
     $forceGeneration = TRUE;
     
-    // Regenerate the TECHMD datastream
-    $fitsResult = islandora_fits_create_techmd($object, $forceGeneration, array(
-    		'source_dsid' => 'OBJ', 
-    		'destination_dsid' => 'TECHMD', 
-    		'weight' => '0.01',
-    		'function' => array(
-			     'islandora_fits_create_techmd',
-    		),
-    		'file' => drupal_get_path('module', 'islandora_fits') . '/includes/derivatives.inc',
-	  ));
+    try {
     
-    // check to make sure the result was successful as reported by the function 
-    if ($fitsResult['success'] != 1) {
-        print("\n\n**ERROR generating TECHMD datastream for $objectPID\n");
-        print_r($fitsResult);
+        // Regenerate the TECHMD datastream
+        $fitsResult = islandora_fits_create_techmd($object, $forceGeneration, array(
+        		'source_dsid' => 'OBJ', 
+        		'destination_dsid' => 'TECHMD', 
+        		'weight' => '0.01',
+        		'function' => array(
+    			     'islandora_fits_create_techmd',
+        		),
+        		'file' => drupal_get_path('module', 'islandora_fits') . '/includes/derivatives.inc',
+    	  ));
+        
+        // check to make sure the result was successful as reported by the function 
+        if ($fitsResult['success'] != 1) {
+            print("\n\n**ERROR generating TECHMD datastream for $objectPID\n");
+            print_r($fitsResult);
+        }
+        
+        // Regen the TN datastream
+        $tnResult = islandora_pdf_add_tn_derivative($object, $forceGeneration);
+        
+        // check to make sure the result was successful as reported by the function
+        if ($tnResult['success'] != 1) {
+            print("\n\n**ERROR generating TN datastream for $objectPID\n");
+            print_r($tnResult);
+        }
+        
+        // Regen the FULL_TEXT datastream
+        $fulltextResult = islandora_pdf_add_fulltext_derivative($object, $forceGeneration);
+        
+        // check to make sure the result was successful as reported by the function
+        if ($fulltextResult['success'] != 1) {
+            print("\n\n**ERROR generating FULL_TEXT datastream for $objectPID\n");
+            print_r($fulltextResult);
+        }
+        
+        // Regen the Preview datastream
+        $previewResult = islandora_pdf_add_preview_derivative($object, $forceGeneration);
+        
+        // check to make sure the result was successful as reported by the function
+        if ($previewResult['success'] != 1) {
+            print("\n\n**ERROR generating PREVIEW datastream for $objectPID\n");
+            print_r($previewResult);
+        }
+        
+        if ($fitsResult['success']==1 && $tnResult['success']==1 && $fulltextResult['success']==1
+                && $previewResult['success']==1) {
+            $objectsChanged++;
+        }
     }
-    
-    // Regen the TN datastream
-    $tnResult = islandora_pdf_add_tn_derivative($object, $forceGeneration);
-    
-    // check to make sure the result was successful as reported by the function
-    if ($tnResult['success'] != 1) {
-        print("\n\n**ERROR generating TN datastream for $objectPID\n");
-        print_r($tnResult);
-    }
-    
-    // Regen the FULL_TEXT datastream
-    $fulltextResult = islandora_pdf_add_fulltext_derivative($object, $forceGeneration);
-    
-    // check to make sure the result was successful as reported by the function
-    if ($fulltextResult['success'] != 1) {
-        print("\n\n**ERROR generating FULL_TEXT datastream for $objectPID\n");
-        print_r($fulltextResult);
-    }
-    
-    // Regen the Preview datastream
-    $previewResult = islandora_pdf_add_preview_derivative($object, $forceGeneration);
-    
-    // check to make sure the result was successful as reported by the function
-    if ($previewResult['success'] != 1) {
-        print("\n\n**ERROR generating PREVIEW datastream for $objectPID\n");
-        print_r($previewResult);
-    }
-    
-    if ($fitsResult['success']==1 && $tnResult['success']==1 && $fulltextResult['success']==1
-            && $previewResult['success']==1) {
-        $objectsChanged++;
+    catch (Exception $e) {
+        drush_print("******###### ERROR ######******");
+        drush_print("Could not create a derivative, skipping $objectPID");
+        $skippedObjects[] = $objectPID;
+        continue;
     }
 }
 drush_print("Main processing loop complete");
-drush_print("$objectsChanged out of $totalNumObjects objects were updated");
+drush_print("$objectsChanged out of $totalNumObjects objects had their select derivatives completely regenerated");
+
+if (!empty($skippedObjects)) {
+    drush_print("The script encountered problems with the following objects");
+    foreach ($skippedObjects as $skipped) {
+        drush_print($skipped);
+    }
+}
+
 echo "\n\nAll operations complete\n";
 
 
