@@ -12,7 +12,7 @@
  * next version's checksum. Two consecutive datastream versions without checksums are considered IDENTICAL.
  *
  * Example: if we list all versions of a datastream, starting from the oldest version and 'AAA' denotes a
- * datastream checksum value of either a valid checksum or nothing at all, 
+ * datastream checksum value of either a valid checksum or nothing at all,
  * we can represent the steps of this script from left to right
  *
  * AAA -> AAA -> AAA
@@ -42,6 +42,19 @@
  * endDT value if we want to keep the most recent version of the
  * datastream or add time if we want to keep the oldest version of the ds
  */
+
+
+
+
+// Establish the array of Datastreams we care about pruning
+$datastreamArray = array(
+    'TN',
+    'PREVIEW',
+    'FULL_TEXT',
+    'TECHMD'
+);
+
+
 
 /**
  * Creates a custom formatted ISO8601-ish datetime string
@@ -146,6 +159,12 @@ function formatBytes($size, $precision = 2)
     return round(pow(1024, $base - floor($base)), $precision) . $suffixes[floor($base)];
 }
 
+
+
+// main block
+
+
+
 // grab the first user supplied parameter as the name of the collection
 $collection = drush_shift();
 
@@ -162,15 +181,15 @@ foreach (glob($tuquePath) as $filename) {
 }
 
 // repository connection parameters
-$url        = 'localhost:8080/fedora';
-$username   = 'fedoraAdmin';
-$password   = 'fedoraAdmin';
+$url = 'localhost:8080/fedora';
+$username = 'fedoraAdmin';
+$password = 'fedoraAdmin';
 
 // set up connection and repository variables
 $connection = new RepositoryConnection($url, $username, $password);
-$api        = new FedoraApi($connection);
+$api = new FedoraApi($connection);
 $repository = new FedoraRepository($api, new SimpleCache());
-$api_m      = $repository->api->m; // Fedora management API
+$api_m = $repository->api->m; // Fedora management API
                                    
 // query to grab all pdf collection objects from the repository
 $sparqlQuery = "SELECT ?s
@@ -201,14 +220,16 @@ $objectsChanged = 0;
 // establish a counter for the amount of space we free up by deleting DS's
 $spaceFreed = 0;
 
+$objectsSkipped = array();
 $objectsWithProblems = array();
 $totalNumberDatastreams = 0;
+$objectsChanged = 0;
 
-// Establish the array of Datastreams we care about pruning
-$derivativeArray = array('TN', 'PREVIEW', 'FULL_TEXT', 'TECHMD');
+// force generation/regeneration of data
+$forceGeneration = TRUE;
 
 drush_print("\nBeginning main processing loop\n");
-for ($counter = 0; $counter < $totalNumObjects; $counter++) {
+for ($counter = 0; $counter < $totalNumObjects; $counter ++) {
     // grab the next object from the result set
     $theObject = $allPDFObjects[$counter];
     
@@ -220,89 +241,87 @@ for ($counter = 0; $counter < $totalNumObjects; $counter++) {
     $objectPID = $theObject['s']['value'];
     
     try {
-    	$object = $repository->getObject($objectPID);
+        $object = $repository->getObject($objectPID);
     } catch (Exception $e) {
-      drush_print("****ERROR loading $objectPID from repository, skipping it");
-      $objectsWithProblems[] = $objectPID;
-      continue;
+        drush_print("****ERROR loading $objectPID from repository, skipping it");
+        $objectsSkipped[] = $objectPID;
+        continue;
     }
     
     foreach ($object as $datastream) {
-        if (in_array($datastream->label, $derivativeArray)) {
-            
-            // do the thing here
+        if (in_array($datastream->label, $datastreamArray)) {
             
             $dshistory = $api_m->getDatastreamHistory($objectPID, $datastream->label); // NB: ds's are returned in order from most to least recent
             $oldestToNewestDS = array_reverse($dshistory);
             $totalStartingDSNum = count($oldestToNewestDS);
-            drush_print($datastream->label . " datastream array before pruning");
-            print_r($oldestToNewestDS);
-            drush_print("************************************************");
+            drush_print("Processing " . $datastream->label . " for $objectPID");
+            // print_r($oldestToNewestDS);
+            // drush_print("************************************************");
             
             $oldestDS = $oldestToNewestDS[0];
             $mainCounter = count($oldestToNewestDS) - 1;
             
             for ($i = 0; $i <= $mainCounter; $i ++) {
-                drush_print("OUTER: value of i is $i");
+                // drush_print("OUTER: value of i is $i");
                 $currentDS = $oldestToNewestDS[$i];
                 $nextDS = $oldestToNewestDS[$i + 1];
                 if (! $currentDS || ! $nextDS) {
-                    drush_print("OUTER: Nothing to compare anymore, finishing up");
+                    // drush_print("OUTER: Nothing to compare anymore, finishing up");
                     break;
                 }
-                drush_print('OUTER: Comparing checksum of ' . $currentDS['dsVersionID'] . ' to checksum of ' . $nextDS['dsVersionID']);
-            
+                // drush_print('OUTER: Comparing checksum of ' . $currentDS['dsVersionID'] . ' to checksum of ' . $nextDS['dsVersionID']);
+                
                 $currentChecksum = $currentDS['dsChecksum'];
                 $nextChecksum = $nextDS['dsChecksum'];
-            
+                
                 $toBeRemoved = array();
-            
+                
                 if ($currentChecksum === $nextChecksum) {
-                    drush_print("OUTER: Checksums are the same, continuing");
-            
+                    // drush_print("OUTER: Checksums are the same, continuing");
+                    
                     $toBeRemoved[] = $nextDS;
-            
+                    
                     for ($innerCounter = $i + 1; $innerCounter <= count($oldestToNewestDS) - 1; $innerCounter ++) {
-            
+                        
                         $innerDSChecksum = $oldestToNewestDS[$innerCounter]['dsChecksum'];
                         $nextInnerDSChecksum = $oldestToNewestDS[$innerCounter + 1]['dsChecksum'];
-            
-                        drush_print('   INNER: Comparing checksum of ' . $oldestToNewestDS[$innerCounter]['dsVersionID'] . ' to checksum of ' . $oldestToNewestDS[$innerCounter + 1]['dsVersionID']);
-            
+                        
+                        // drush_print(' INNER: Comparing checksum of ' . $oldestToNewestDS[$innerCounter]['dsVersionID'] . ' to checksum of ' . $oldestToNewestDS[$innerCounter + 1]['dsVersionID']);
+                        
                         if ($innerDSChecksum === $nextInnerDSChecksum) {
                             $toBeRemoved[] = $oldestToNewestDS[$innerCounter + 1];
                             continue;
                         } else {
-            
+                            
                             $totalDSSize = 0;
                             foreach ($toBeRemoved as $ds) {
                                 $totalDSSize += $ds['dsSize'];
                             }
-            
+                            
                             // remove from $currentDS to $oldestToNewestDS[$innerCounter]
-                            drush_print('   INNER: Checksums are different, removing from ' . $currentDS['dsVersionID'] . ' to ' . $oldestToNewestDS[$innerCounter]['dsVersionID']);
+                            // drush_print(' INNER: Checksums are different, removing from ' . $currentDS['dsVersionID'] . ' to ' . $oldestToNewestDS[$innerCounter]['dsVersionID']);
                             try {
                                 $api_m->purgeDatastream($objectPID, $datastream->label, array(
                                     'startDT' => createMicrosecondDT($currentDS, "+1"),
                                     'endDT' => createMicrosecondDT($oldestToNewestDS[$innerCounter]),
                                     'logMessage' => ''
                                 ));
-            
+                                
                                 $spaceFreed += $totalDSSize;
-            
+                                
                                 $mainCounter = count($api_m->getDatastreamHistory($objectPID, $datastream->label));
                                 $oldestToNewestDS = array_reverse($api_m->getDatastreamHistory($objectPID, $datastream->label));
                                 // print_r($oldestToNewestDS);
                                 break;
                             } catch (Exception $e) {
-                                drush_print("***ERROR: skipping deletion of datastreams***");
+                                drush_print("***ERROR: skipping deletion of " . $datastream->label . " datastream for $objectPID***");
                                 $objectsWithProblems[] = $objectPID;
                                 break;
                             }
                         }
                     }
                 } else {
-                    drush_print('OUTER: value of checksums for ' . $currentDS['dsVersionID'] . ' and ' . $nextDS['dsVersionID'] . ' are different, going to next DS');
+                    // drush_print('OUTER: value of checksums for ' . $currentDS['dsVersionID'] . ' and ' . $nextDS['dsVersionID'] . ' are different, going to next DS');
                     continue;
                 }
             }
@@ -313,24 +332,24 @@ for ($counter = 0; $counter < $totalNumObjects; $counter++) {
             $totalNumberDatastreams += max(0, ($totalStartingDSNum - count($oldestToNewestDSEnd)));
         }
     }
-    
+    drush_print("\n");
 }
 
 print "\n";
 
-if (! empty($objectsWithProblems)) {
-    drush_print("The script encountered problems with the following objects");
-    foreach ($objectsWithProblems as $prob) {
-        drush_print($prob);
+if (! empty($objectsSkipped)) {
+    drush_print("The script encountered problems with the following objects and skipped them");
+    foreach ($objectsSkipped as $skipped) {
+        drush_print($skipped);
     }
 }
-
+drush_print("Number of objects with derivatives fully regenerated: $objectsChanged");
 drush_print("Number of datastreams removed: $totalNumberDatastreams");
 drush_print("Amount of space freed : " . ($spaceFreed == 0 ? 0 : formatBytes($spaceFreed, 3)));
 
 $objectsWithProblems = array_unique($objectsWithProblems);
-if (!empty($objectsWithProblems)) {
-    drush_print("The script encountered errors with the following objects");
+if (! empty($objectsWithProblems)) {
+    drush_print("The script encountered errors in removing datastreams with the following objects");
     foreach ($objectsWithProblems as $badegg) {
         drush_print($badegg);
     }
