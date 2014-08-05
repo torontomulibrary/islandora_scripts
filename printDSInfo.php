@@ -51,15 +51,17 @@ $repository = new FedoraRepository($api, new SimpleCache());
 $api_m = $repository->api->m;
 $api_a = $repository->api->a;
 
+drush_print("Datastream history for the $dslabel datastream:");
 $info = array_reverse($api_m->getDatastreamHistory($PID, $dslabel));
 print_r($info);
 
 $history = $api_a->getObjectHistory($PID);
 $profile = $api_a->getObjectProfile($PID, new DateTime());
 
+drush_print("Object History:");
 print_r($history);
-print_r($profile);
 
-drush_print("\nMain processing loop complete\n");
+drush_print("Object Profile:");
+print_r($profile);
 
 echo "\n\nAll operations complete\n";
