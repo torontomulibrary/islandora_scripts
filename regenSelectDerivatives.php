@@ -74,6 +74,8 @@ $objectsChanged = 0;
 // establish an array to keep track of any objects we skip
 $skippedObjects = array();
 
+$problemObjects = array();
+
 drush_print("\nBeginning main processing loop\n");
 for ($counter = 0; $counter < $totalNumObjects; $counter++) {
     
@@ -94,15 +96,19 @@ for ($counter = 0; $counter < $totalNumObjects; $counter++) {
     catch (Exception $e) {
         drush_print("\n\n**********#######  ERROR  #######*********");
         drush_print("***Could not get object $objectPID from repo***\n\n");
+        $skippedObjects[] = $objectPID;
         continue;
     }
 
     // forces generation/regeneration of FITS data
     $forceGeneration = TRUE;
     
-    try {
+    drush_print("Current Object: $objectPID");
     
+    try {
+        
         // Regenerate the TECHMD datastream
+        drush_print("Regenerating TECHMD");
         $fitsResult = islandora_fits_create_techmd($object, $forceGeneration, array(
         		'source_dsid' => 'OBJ', 
         		'destination_dsid' => 'TECHMD', 
@@ -110,7 +116,7 @@ for ($counter = 0; $counter < $totalNumObjects; $counter++) {
         		'function' => array(
     			     'islandora_fits_create_techmd',
         		),
-        		'file' => drupal_get_path('module', 'islandora_fits') . '/includes/derivatives.inc',
+        		'file' => '/var/www/drupal/htdocs/sites/all/modules/islandora_fits/includes/derivatives.inc',
     	  ));
         
         // check to make sure the result was successful as reported by the function 
@@ -119,16 +125,8 @@ for ($counter = 0; $counter < $totalNumObjects; $counter++) {
             print_r($fitsResult);
         }
         
-        // Regen the TN datastream
-        $tnResult = islandora_pdf_add_tn_derivative($object, $forceGeneration);
-        
-        // check to make sure the result was successful as reported by the function
-        if ($tnResult['success'] != 1) {
-            print("\n\n**ERROR generating TN datastream for $objectPID\n");
-            print_r($tnResult);
-        }
-        
         // Regen the FULL_TEXT datastream
+        drush_print("Regenerating FULL_TEXT");
         $fulltextResult = islandora_pdf_add_fulltext_derivative($object, $forceGeneration);
         
         // check to make sure the result was successful as reported by the function
@@ -137,7 +135,18 @@ for ($counter = 0; $counter < $totalNumObjects; $counter++) {
             print_r($fulltextResult);
         }
         
+        // Regen the TN datastream
+        drush_print("Regenerating TN");
+        $tnResult = islandora_pdf_add_tn_derivative($object, $forceGeneration);
+        
+        // check to make sure the result was successful as reported by the function
+        if ($tnResult['success'] != 1) {
+            print("\n\n**ERROR generating TN datastream for $objectPID\n");
+            print_r($tnResult);
+        }
+        
         // Regen the Preview datastream
+        drush_print("Regenerating PREVIEW");
         $previewResult = islandora_pdf_add_preview_derivative($object, $forceGeneration);
         
         // check to make sure the result was successful as reported by the function
@@ -154,7 +163,7 @@ for ($counter = 0; $counter < $totalNumObjects; $counter++) {
     catch (Exception $e) {
         drush_print("******###### ERROR ######******");
         drush_print("Could not create a derivative, skipping $objectPID");
-        $skippedObjects[] = $objectPID;
+        $problemObjects[] = $objectPID;
         continue;
     }
 }
@@ -162,9 +171,16 @@ drush_print("Main processing loop complete");
 drush_print("$objectsChanged out of $totalNumObjects objects had their select derivatives completely regenerated");
 
 if (!empty($skippedObjects)) {
-    drush_print("The script encountered problems with the following objects");
+    drush_print("The script encountered problems with the following objects and has skipped them");
     foreach ($skippedObjects as $skipped) {
         drush_print($skipped);
+    }
+}
+
+if (!empty($problemObjects)) {
+    drush_print("The script had datastream regeneration problems with the following objects");
+    foreach ($problemObjects as $prob) {
+        drush_print($prob);
     }
 }
 
