@@ -23,9 +23,10 @@ if (!$collection) {
     return;
 }
 
-# include all php files necessary for Tuque
-foreach ( glob("/var/www/drupal/htdocs/sites/all/libraries/tuque/*.php") as $filename) {
-	require_once($filename);
+// include all Tuque php files
+$tuquePath = libraries_get_path('tuque') . '/*.php';
+foreach (glob($tuquePath) as $filename) {
+    require_once ($filename);
 }
 
 # Include the file from islandora_fits module that regens the FITS/TECHMD data for us
@@ -159,11 +160,14 @@ for ($counter = 0; $counter < $totalNumObjects; $counter++) {
                 && $previewResult['success']==1) {
             $objectsChanged++;
         }
+        else {
+            $problemObjects[] = $objectPID;
+        }
     }
     catch (Exception $e) {
         drush_print("******###### ERROR ######******");
         drush_print("Could not create a derivative, skipping $objectPID");
-        $problemObjects[] = $objectPID;
+        $skippedObjects[] = $objectPID;
         continue;
     }
 }
@@ -178,6 +182,7 @@ if (!empty($skippedObjects)) {
 }
 
 if (!empty($problemObjects)) {
+    $problemObjects = array_unique($problemObjects);
     drush_print("The script had datastream regeneration problems with the following objects");
     foreach ($problemObjects as $prob) {
         drush_print($prob);
