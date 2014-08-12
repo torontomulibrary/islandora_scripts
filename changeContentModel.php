@@ -54,7 +54,7 @@ print_r($object_content_models);
 
 
 /** 
- * THIS IS FOR CHANGING PDF MODEL -> CITATION MODEL
+ * THIS IS FOR CHANGING PDF MODEL -> THESIS MODEL
  * 
  * Change the third argument to the 'add' and 'remove' methods to reflect the changes you need
 **/
