@@ -3,7 +3,7 @@
 #<?php
 
 /**
- * This script is designed to change the content model of an object in the repo
+ * This script is designed to change the content model of a single object in the repo
  * 
  * Call this script using drush and supply it with the object PID you want to change as the parameter
  *
@@ -18,7 +18,7 @@ $objectPID = drush_shift();
 
 if (! $objectPID) {
     drush_print("***Error: please provide the object PID as the first argument");
-    drush_print("Example: drush php-script editMODSTopicsSingleObject.php RULA:13");
+    drush_print("Example: drush php-script changeContentModel.php RULA:13");
     return;
 }
 
@@ -35,7 +35,7 @@ $password = 'fedoraAdmin';
 
 // set up connection and repository variables
 $connection = new RepositoryConnection($url, $username, $password);
-$api = new FedoraApi($connection);
+$api        = new FedoraApi($connection);
 $repository = new FedoraRepository($api, new SimpleCache());
 
 
@@ -48,10 +48,10 @@ try {
     drush_print("***Could not get object $objectPID from repo***\n\n");
     return;
 }
+
 drush_print("*************Object relationships before changes*************");
 $object_content_models = $object->relationships->get('info:fedora/fedora-system:def/model#', 'hasModel');
 print_r($object_content_models);
-
 
 /** 
  * THIS IS FOR CHANGING PDF MODEL -> THESIS MODEL
