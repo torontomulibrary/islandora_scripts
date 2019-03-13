@@ -113,13 +113,15 @@ for ($counter = 0; $counter < $totalNumObjects; $counter++) {
 
 	$xslDoc = new DOMDocument();
 	$xslDoc->load($xslt);
-	   
+
+	// Apply the XSL to the document and get the resultant transformed XML
 	$proc = new XSLTProcessor();
 	$proc->importStylesheet($xslDoc);
 	$transformedXML = $proc->transformToXML($modsDOMDoc);
 
-print_r($transformedXML);
-return;
+//print_r($transformedXML);
+//return;
+
     if ($updateThisRecord) {
         
         try {
@@ -165,6 +167,7 @@ return;
         
     }
 }
+
 drush_print("Main processing loop complete");
 drush_print("$objectsChanged out of $totalNumObjects were updated");
 if (!empty($skippedObjects)) {
