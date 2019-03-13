@@ -34,7 +34,7 @@ $collection = drush_shift();
 
 if (!$collection) {
     drush_print("***Error: please provide the name of the collection as the first argument");
-    drush_print("Example: drush php-script editMODSTopics.php islandora:collection_name_here /path/to/file.xsl");
+    drush_print("Example: drush php-script editMODSTopicsSearchReplace.php islandora:collection_name_here");
     return;
 }
 
