@@ -83,10 +83,10 @@ for ($counter = 0; $counter < $totalNumObjects; $counter++) {
     
     $theObject = $allObjects[$counter];
     $realCount = $counter + 1;
-    drush_print("Processing record $realCount of $totalNumObjects");
-    
     //print $theObject['s']['value'];
     $objectPID = $theObject['s']['value'];
+
+    drush_print("Processing record $realCount of $totalNumObjects : $objectPID");    
        
     # try to fetch PID from repo
     try {
@@ -102,12 +102,8 @@ for ($counter = 0; $counter < $totalNumObjects; $counter++) {
 
 	# grab the MODS data stream
 	$modsDS = $object['MODS'];
-
-    # grab the MODS data stream
-    $modsDS = $object['MODS'];
     
     /****************MODS RECORD**********************/
-    drush_print("Editing MODS record");
     
     // flag to indicate if datastream reingest and DC regen is needed
     $updateThisRecord = FALSE;
@@ -126,6 +122,7 @@ for ($counter = 0; $counter < $totalNumObjects; $counter++) {
         
 			// do the replacement to the node's text
 	        if ($topicNode->nodeValue === $topicSearchString) {
+			    drush_print("Editing MODS record");
 	            $topicNode->nodeValue = htmlspecialchars($topicReplaceString);
 	            $updateThisRecord = TRUE;
 	        }
@@ -136,7 +133,7 @@ for ($counter = 0; $counter < $totalNumObjects; $counter++) {
         
         try {
             // write the new updated info back into the datastream
-            $modsDS->setContentFromString($transformedXML);
+            $modsDS->setContentFromString($modsDOMDoc->saveXML($modsDOMDoc->documentElement));
             
             # ingest edited datastream into the repository
             $object->ingestDatastream($modsDS);
