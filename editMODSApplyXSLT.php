@@ -84,7 +84,7 @@ for ($counter = 0; $counter < $totalNumObjects; $counter++) {
     //print $theObject['s']['value'];
     $objectPID = $theObject['s']['value'];
 
-    drush_print("Processing record $realCount of $totalNumObjects");    
+    drush_print("Processing record $realCount of $totalNumObjects\n");    
        
     # try to fetch PID from repo
     try {
@@ -105,7 +105,7 @@ for ($counter = 0; $counter < $totalNumObjects; $counter++) {
     $modsDS = $object['MODS'];
 
     /****************MODS RECORD**********************/
-    drush_print("Opening MODS record for PID: $objectPID\n");
+    drush_print("Opening MODS record for PID: $objectPID");
 
     $modsDOMDoc = new DOMDocument();
     $modsDOMDoc->preserveWhiteSpace = false;

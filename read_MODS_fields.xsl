@@ -10,18 +10,20 @@
 
 	<!-- 1: Output <title> elements -->
 	<xsl:template match="mods:title | mods:titleInfo">
-		<title><xsl:value-of select="."/></title>
+		<xsl:element name="title" namespace="">
+			<xsl:value-of select="."/>
+		</xsl:element>
 	</xsl:template>
 
 
 	<!-- 2: Output <name> elements -->
 	<xsl:template match="mods:name">
-		<name>
+		<xsl:element name="name" namespace="">
 		    <xsl:for-each select="mods:namePart">
 		        <xsl:sort select="position()" data-type="number" order="descending"/>
 		        <xsl:value-of select="."/><xsl:text>; </xsl:text>
 		    </xsl:for-each>
-		</name>
+		</xsl:element>
 	</xsl:template>
 
 	<!--
