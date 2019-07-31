@@ -97,14 +97,14 @@ for ($counter = 0; $counter < $totalNumObjects; $counter++) {
         continue;
     }
     
-    # grab the MODS data stream
-    $modsDS = $object['MODS'];
-    
-    /****************MODS RECORD**********************/
-    drush_print("Editing MODS record");
-    
     // flag to indicate if datastream reingest and DC regen is needed
     $updateThisRecord = FALSE;
+    
+    # grab the MODS data stream
+    $modsDS = $object['MODS'];
+
+    /****************MODS RECORD**********************/
+    drush_print("Opening MODS record");
 
     $modsDOMDoc = new DOMDocument();
     $modsDOMDoc->preserveWhiteSpace = false;
@@ -119,9 +119,6 @@ for ($counter = 0; $counter < $totalNumObjects; $counter++) {
 	$proc->importStylesheet($xslDoc);
 	$transformedXML = $proc->transformToXML($modsDOMDoc);
 
-//print_r($transformedXML);
-//return;
-
     if ($updateThisRecord) {
         
         try {
@@ -130,6 +127,8 @@ for ($counter = 0; $counter < $totalNumObjects; $counter++) {
             
             # ingest edited datastream into the repository
             $object->ingestDatastream($modsDS);
+
+			drush_print("MODS record updated for object pid: $objectPID\n");
         }
         catch (Exception $e) {
             drush_print("\n\n**********#######  ERROR  #######*********");
@@ -138,8 +137,6 @@ for ($counter = 0; $counter < $totalNumObjects; $counter++) {
             continue;
         }
             
-            // drush_print("MODS record updated for object pid: $objectPID\n");
-            /*************MODS RECORD COMPLETE*****************/
             
         try {
             /******************DUBLIN CORE ********************/
@@ -151,12 +148,10 @@ for ($counter = 0; $counter < $totalNumObjects; $counter++) {
             
             // the magic call
             xml_form_builder_update_dc_datastream($object, $transform, $document);
-            
+
             drush_print("Dublin core regenerated");
             /*************DUBLIN CORE COMPLETE*****************/
             
-            // keep track of how many objects we edited
-            $objectsChanged++;
         }
         catch (Exception $e) {
             drush_print("\n\n**********#######  ERROR  #######*********");
@@ -164,8 +159,15 @@ for ($counter = 0; $counter < $totalNumObjects; $counter++) {
             $skippedObjects[] = $objectPID;
             continue;
         }
+
+        // keep track of how many objects we edited
+        $objectsChanged++;
         
+    } else {
+		print_r($transformedXML);
     }
+
+    /*************MODS RECORD COMPLETE*****************/	
 }
 
 drush_print("Main processing loop complete");
