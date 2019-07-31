@@ -8,6 +8,17 @@
 	<xsl:output method="xml" indent="yes" omit-xml-declaration="no"/>
 	<xsl:strip-space elements="*"/>
 
+	<!-- 1: Output <title> elements -->
+	<xsl:template match="mods:title | mods:titleInfo">
+		<xsl:copy-of select="."/>
+	</xsl:template>
+
+
+	<!-- 2: Output <name> elements -->
+	<xsl:template match="mods:name">
+		<xsl:copy-of select="."/>
+	</xsl:template>
+
 	<!--
 	  -
 	  - DO NOT MODIFY ANYTHING BELOW THIS LINE
@@ -38,7 +49,7 @@
 	</xsl:template>
 
 	<!-- add namespace prefix -->
-	<xsl:template match="mods:*">
+	<xsl:template match="mods:mods">
 		<!--
 		<xsl:element name="mods:{local-name()}" namespace="http://www.loc.gov/mods/v3">
 			<xsl:copy-of select="namespace::*"/>
