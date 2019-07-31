@@ -5,7 +5,7 @@
 	xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
 	version="1.0" exclude-result-prefixes="etd xsi">
 
-	<xsl:output method="xml" indent="yes" omit-xml-declaration="no"/>
+	<xsl:output method="xml" indent="yes" omit-xml-declaration="yes"/>
 	<xsl:strip-space elements="*"/>
 
 	<!-- 1: Output <title> elements -->
@@ -61,9 +61,9 @@
 			<xsl:apply-templates select="node()|@*"/>
 		</xsl:element>
 		-->
-		<object>
+		<xsl:element name="object" namespace="">
 			<xsl:apply-templates/>
-		</object>
+		</xsl:element>
 	</xsl:template>
 	
 	<xsl:template match="mods:*"/>
