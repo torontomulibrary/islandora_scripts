@@ -8,6 +8,11 @@
 	<xsl:output method="xml" indent="yes" omit-xml-declaration="no"/>
 	<xsl:strip-space elements="*"/>
 
+	<xsl:template match="mods">
+		<object>
+			<xsl:apply-templates/>
+		</object>
+	</xsl:template>
 
 	<!-- 1: Output <title> elements -->
 	<xsl:template match="title | titleInfo">
