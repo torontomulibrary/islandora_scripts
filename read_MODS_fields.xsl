@@ -10,14 +10,14 @@
 
 
 	<!-- 1: Output <title> elements -->
-	<xsl:template match="mods:title | mods:titleInfo">
-		<xsl-copy-of select="."/>
+	<xsl:template match="title | titleInfo">
+		<xsl:copy-of select="."/>
 	</xsl:template>
 
 
 	<!-- 2: Output <name> elements -->
-	<xsl:template match="mods:name">
-		<xsl-copy-of select="."/>
+	<xsl:template match="name">
+		<xsl:copy-of select="."/>
 	</xsl:template>
 
 	<!--
