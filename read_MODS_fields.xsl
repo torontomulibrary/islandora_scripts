@@ -60,5 +60,7 @@
 			<xsl:apply-templates/>
 		</object>
 	</xsl:template>
+	
+	<xsl:template match="mods:*"/>
 
 </xsl:stylesheet>
